@@ -1,0 +1,90 @@
+"""Aspect-preserving transforms, Dataset, and collate for (image, latex) pairs.
+
+Quality-first pipeline:
+- scale to fit (height, max_width) preserving aspect ratio, then pad to fixed height
+  (white). Aspect ratio is NEVER distorted.
+- each sample carries its valid (h, w) so attention can mask out the padding.
+"""
+import torch
+import torchvision.transforms as T
+from PIL import Image
+from torch.utils.data import Dataset
+
+from .config import PAD_ID
+from .tokenizer import Vocab, tokenize_latex
+
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD = [0.229, 0.224, 0.225]
+
+_POST = T.Compose([T.ToTensor(), T.Normalize(IMAGENET_MEAN, IMAGENET_STD)])
+
+
+def _pre(train: bool):
+    """Grayscale->3ch (keeps pretrained conv1 valid) + optional augmentation. PIL->PIL."""
+    aug = []
+    if train:
+        aug = [
+            T.RandomApply([T.RandomAffine(degrees=5, shear=5, translate=(0.02, 0.02))], p=0.5),
+            T.RandomApply([T.GaussianBlur(3)], p=0.3),
+            T.ColorJitter(brightness=0.2, contrast=0.2),
+        ]
+    return T.Compose([T.Grayscale(num_output_channels=3), *aug])
+
+
+def _resize_pad(img: Image.Image, height: int, max_width: int):
+    """Scale to fit (height, max_width) preserving aspect, pad bottom to fixed height.
+    Returns (padded_img, valid_h, valid_w). No aspect distortion, ever."""
+    w, h = img.size
+    scale = min(height / h, max_width / w)
+    nw, nh = max(1, round(w * scale)), max(1, round(h * scale))
+    img = img.resize((nw, nh), Image.BILINEAR)
+    if nh < height:                                   # only when width was the binding limit
+        white = (255,) * len(img.getbands())
+        canvas = Image.new(img.mode, (nw, height), white)
+        canvas.paste(img, (0, 0))
+        img = canvas
+    return img, nh, nw
+
+
+def transform_image(img, height: int, max_width: int, train: bool = False):
+    """img: PIL or path -> (tensor (3,H,W), valid_hw tensor([h, w])). Shared by
+    Dataset, evaluate, and the API so preprocessing never drifts between them."""
+    if not isinstance(img, Image.Image):
+        img = Image.open(img)
+    img = _pre(train)(img.convert("L"))
+    img, vh, vw = _resize_pad(img, height, max_width)
+    return _POST(img), torch.tensor([vh, vw], dtype=torch.long)
+
+
+class LatexImageDataset(Dataset):
+    """samples: list of (image_path, latex_string)."""
+
+    def __init__(self, samples, vocab: Vocab, height, max_width, train, max_seq_length=200):
+        self.samples = samples
+        self.vocab = vocab
+        self.height = height
+        self.max_width = max_width
+        self.train = train
+        self.max_seq_length = max_seq_length
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        path, latex = self.samples[idx]
+        img, valid_hw = transform_image(path, self.height, self.max_width, self.train)
+        ids = self.vocab.encode(tokenize_latex(latex))[: self.max_seq_length]
+        return img, torch.tensor(ids, dtype=torch.long), valid_hw
+
+
+def collate_fn(batch):
+    """Pad images to batch-max width and captions to batch-max length. valid_hw travels
+    through so attention masks the padding (quality) rather than attending to blanks."""
+    imgs, caps, valid_hw = zip(*batch)
+    max_w = max(i.shape[2] for i in imgs)
+    imgs = torch.stack([torch.nn.functional.pad(i, (0, max_w - i.shape[2])) for i in imgs])
+    max_len = max(len(c) for c in caps)
+    padded = torch.full((len(caps), max_len), PAD_ID, dtype=torch.long)
+    for j, c in enumerate(caps):
+        padded[j, : len(c)] = c
+    return imgs, padded, torch.stack(valid_hw)

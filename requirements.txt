@@ -1,0 +1,16 @@
+# Model / training
+torch>=2.2
+torchvision>=0.17
+pillow
+numpy
+nltk
+tqdm
+datasets            # HuggingFace loader for im2latex-100k
+# Benchmark baseline
+pix2tex             # modern transformer LaTeX-OCR, the "modern" column in the comparison
+# Serving (next increment)
+fastapi
+uvicorn[standard]
+python-multipart
+gradio
+matplotlib          # /render LaTeX -> PNG, attention heatmaps
