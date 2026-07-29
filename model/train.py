@@ -16,6 +16,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
 
 from .config import CKPT_DIR, CONFIG, PAD_ID, VOCAB_PATH
 from .dataset import LatexImageDataset, collate_fn
@@ -48,10 +49,13 @@ def token_accuracy(logits, targets):
     return (pred.eq(targets) & mask).sum().item() / max(1, mask.sum().item())
 
 
-def run_epoch(model, loader, opt, cfg, device, tf_ratio, train):
+def run_epoch(model, loader, opt, cfg, device, tf_ratio, train, epoch=None):
     model.train() if train else model.eval()
     tot_loss = tot_acc = n = 0
-    for imgs, caps, valid_hw in loader:
+    tag = "train" if train else "val"
+    desc = f"ep{epoch} {tag}" if epoch is not None else tag
+    pbar = tqdm(loader, desc=desc, leave=False, dynamic_ncols=True)
+    for imgs, caps, valid_hw in pbar:
         imgs, caps, valid_hw = imgs.to(device), caps.to(device), valid_hw.to(device)
         with torch.set_grad_enabled(train):
             logits, alphas = model(imgs, caps, valid_hw, tf_ratio if train else 0.0)
@@ -65,6 +69,7 @@ def run_epoch(model, loader, opt, cfg, device, tf_ratio, train):
         tot_loss += loss.item()
         tot_acc += token_accuracy(logits, targets)
         n += 1
+        pbar.set_postfix(loss=f"{tot_loss / n:.3f}", acc=f"{tot_acc / n:.3f}")
     return tot_loss / max(1, n), tot_acc / max(1, n)
 
 
@@ -87,6 +92,7 @@ def main():
 
     cfg = dict(CONFIG)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"device: {device}")
     vocab = Vocab.load(VOCAB_PATH)  # built ONCE over both corpora by build_vocab.py
 
     tr = make_loader(args.train, vocab, cfg, train=True)
@@ -111,8 +117,8 @@ def main():
     epochs = args.epochs or cfg["epochs"]
     for epoch in range(start, epochs):
         t0 = time.time()
-        tr_loss, tr_acc = run_epoch(model, tr, opt, cfg, device, tf, train=True)
-        va_loss, va_acc = run_epoch(model, va, None, cfg, device, 0.0, train=False)
+        tr_loss, tr_acc = run_epoch(model, tr, opt, cfg, device, tf, True, epoch)
+        va_loss, va_acc = run_epoch(model, va, None, cfg, device, 0.0, False, epoch)
         sched.step(va_loss)
         tf = max(cfg["teacher_forcing_floor"], tf - cfg["teacher_forcing_decay"])
         print(f"[{args.stage}] ep{epoch} tf={tf:.2f} "
