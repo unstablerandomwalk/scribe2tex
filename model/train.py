@@ -1,7 +1,7 @@
 """Stage-1 pretrain / stage-2 fine-tune loop: teacher forcing, grad clip, LR sched.
 
 Run from the repo root as a module so relative imports resolve:
-    python -m model.train --train data/im2latex/train.jsonl --val data/im2latex/validation.jsonl
+    python -m model.train --train data/im2latex/train.jsonl --val data/im2latex/val.jsonl
     python -m model.train --stage finetune --init-from checkpoints/pretrain_best.pth \
         --train data/mathwriting/train.jsonl --val data/mathwriting/val.jsonl --epochs 15
 
@@ -93,7 +93,7 @@ def main():
     cfg = dict(CONFIG)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"device: {device}")
-    vocab = Vocab.load(VOCAB_PATH)  # built ONCE over both corpora by build_vocab.py
+    vocab = Vocab.load(VOCAB_PATH)  # stage-1 im2latex vocab, reused for the fine-tune
 
     tr = make_loader(args.train, vocab, cfg, train=True)
     va = make_loader(args.val, vocab, cfg, train=False)
@@ -124,12 +124,14 @@ def main():
         print(f"[{args.stage}] ep{epoch} tf={tf:.2f} "
               f"train {tr_loss:.3f}/{tr_acc:.3f} val {va_loss:.3f}/{va_acc:.3f} "
               f"({time.time() - t0:.0f}s)")
+        # decide improvement BEFORE building ck so _last.pth carries the current best_val
+        improved = va_loss < best_val
+        if improved:
+            best_val = va_loss
         ck = {"model": model.state_dict(), "opt": opt.state_dict(), "epoch": epoch,
               "best_val": best_val, "tf": tf, "vocab_size": len(vocab)}
         torch.save(ck, CKPT_DIR / f"{args.stage}_last.pth")
-        if va_loss < best_val:
-            best_val = va_loss
-            ck["best_val"] = best_val
+        if improved:
             torch.save(ck, CKPT_DIR / f"{args.stage}_best.pth")
             print(f"  saved {args.stage}_best.pth (val_loss {best_val:.3f})")
 
