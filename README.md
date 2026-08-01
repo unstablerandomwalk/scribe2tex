@@ -35,13 +35,11 @@ never squished), and attention is **pad-masked** so it only ever attends to real
 | Model | Test set | BLEU | ExpRate | ExpRate ≤1 | ExpRate ≤2 |
 |-------|----------|------|---------|-----------|-----------|
 | Ours (ResNet18+Bahdanau+LSTM) | im2latex (printed)¹ | **91.5** | 0.47 | 0.55 | 0.70 |
-| Ours (fine-tuned) | MathWriting (handwritten) | – | – | – | – |
+| Ours (fine-tuned) | MathWriting (handwritten)¹ | **79.4** | 0.32 | 0.51 | 0.65 |
 | pix2tex (baseline) | MathWriting (handwritten) | – | – | – | – |
 
-¹ Estimated on a 500-sample subset of the im2latex test set; run the full split for the final figure.
-The BLEU-vs-ExpRate gap is instructive: token-level output is very accurate (BLEU 91.5),
-and 70% of predictions are within 2 tokens of exact — most misses are a single brace or
-subscript, not a structural error.
+¹ Estimated on 500-sample test subsets; run full splits for final figures.
+The printed→handwritten gap is the expected story — handwriting is genuinely harder (BLEU 91.5→79.4, exact-match 47%→32%). Fine-tuning lifted handwritten val token-accuracy from 0.52 to **0.82**; the stage-1 vocab already covered **99.9%** of MathWriting tokens, so no retokenizing was needed. pix2tex comparison row is pending.
 
 ## Layout
 ```
