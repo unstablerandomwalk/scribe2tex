@@ -46,7 +46,7 @@ The printed→handwritten gap is the expected story — handwriting is genuinely
 model/    config, tokenizer, dataset, model (enc+attn+dec+seq2seq), train, inference (beam), evaluate
 scripts/  download_data.sh (im2latex), download_mathwriting.py (handwritten), build_vocab.py
 tests/    test_tokenizer.py (runs anywhere), test_model.py (needs torch)
-api/      FastAPI + Gradio over one predict() core   (next increment)
+api/      FastAPI (/predict,/render,/health) + Gradio demo over one predict() core
 ```
 
 ## Run
@@ -69,6 +69,31 @@ python -m model.evaluate --manifest data/mathwriting/test.jsonl --ckpt checkpoin
 python tests/test_tokenizer.py   # pure python, runs now
 python tests/test_model.py       # needs torch (GPU box / Colab / Kaggle)
 ```
+
+## Demo & API
+One `predict()` core (`api/predict.py`), two thin wrappers over it.
+
+**Gradio demo** — upload an image → LaTeX + rendered preview + confidence:
+```bash
+export MODEL_PATH=checkpoints/finetune_best.pth   # handwriting model (or pretrain_best.pth for printed)
+python -m api.app        # local; set share=True in app.py for a temporary public link on Colab
+```
+
+**FastAPI** — `/predict`, `/render`, `/health`:
+```bash
+uvicorn api.main:app --reload
+curl -F file=@sample.png http://127.0.0.1:8000/predict
+```
+
+**Docker:**
+```bash
+docker build -t scribe2tex .
+docker run -p 8000:8000 -v $PWD/checkpoints:/app/checkpoints scribe2tex
+```
+
+**Deploy to Hugging Face Spaces** (permanent public demo): create a Gradio Space, push this
+repo, add `app_file: api/app.py` to the Space README frontmatter, and place
+`finetune_best.pth` + `vocab.json` under `checkpoints/` (git-lfs).
 
 ## Known simplifications
 - Best checkpoint is picked on val cross-entropy (cheap); BLEU/ExpRate reported on the
