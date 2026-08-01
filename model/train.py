@@ -88,8 +88,10 @@ def main():
     ap.add_argument("--init-from", help="warm-start weights (stage-2)")
     ap.add_argument("--resume", help="resume same-stage checkpoint")
     ap.add_argument("--epochs", type=int)
+    ap.add_argument("--tag", help="checkpoint filename prefix (default: --stage)")
     args = ap.parse_args()
 
+    tag = args.tag or args.stage
     cfg = dict(CONFIG)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"device: {device}")
@@ -121,7 +123,7 @@ def main():
         va_loss, va_acc = run_epoch(model, va, None, cfg, device, 0.0, False, epoch)
         sched.step(va_loss)
         tf = max(cfg["teacher_forcing_floor"], tf - cfg["teacher_forcing_decay"])
-        print(f"[{args.stage}] ep{epoch} tf={tf:.2f} "
+        print(f"[{tag}] ep{epoch} tf={tf:.2f} "
               f"train {tr_loss:.3f}/{tr_acc:.3f} val {va_loss:.3f}/{va_acc:.3f} "
               f"({time.time() - t0:.0f}s)")
         # decide improvement BEFORE building ck so _last.pth carries the current best_val
@@ -130,10 +132,10 @@ def main():
             best_val = va_loss
         ck = {"model": model.state_dict(), "opt": opt.state_dict(), "epoch": epoch,
               "best_val": best_val, "tf": tf, "vocab_size": len(vocab)}
-        torch.save(ck, CKPT_DIR / f"{args.stage}_last.pth")
+        torch.save(ck, CKPT_DIR / f"{tag}_last.pth")
         if improved:
-            torch.save(ck, CKPT_DIR / f"{args.stage}_best.pth")
-            print(f"  saved {args.stage}_best.pth (val_loss {best_val:.3f})")
+            torch.save(ck, CKPT_DIR / f"{tag}_best.pth")
+            print(f"  saved {tag}_best.pth (val_loss {best_val:.3f})")
 
 
 if __name__ == "__main__":
