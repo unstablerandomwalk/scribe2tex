@@ -36,7 +36,7 @@ demo = gr.Interface(
     description="ResNet-18 + Bahdanau attention + LSTM, trained on im2latex (BLEU 91.5) "
                 "and fine-tuned on MathWriting (BLEU 79.4). Upload an image of a math "
                 "expression to get its LaTeX.",
-    allow_flagging="never",
+    flagging_mode="never",
 )
 
 if __name__ == "__main__":
