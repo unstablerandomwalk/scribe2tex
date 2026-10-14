@@ -40,9 +40,12 @@ deliberately the "classic" model so it can be **benchmarked vs pix2tex** (the mo
 |---|---|---|---|---|---|---|
 | 1 pretrain | `pretrain_best.pth` | im2latex (printed) | **91.5** | 0.47 | 0.55 | 0.70 |
 | 2 finetune | `finetune_best.pth` | MathWriting (handwritten) | **79.4** | 0.32 | 0.51 | 0.65 |
-| 3 hme100k | `hme100k_best.pth` | HME100K (photos) | PENDING | — | — | — |
+| 3 hme100k | `hme100k_best.pth` | HME100K (photos) | **88.3** | 0.524 | 0.724 | 0.832 |
 
-Stage-2 val token-accuracy peaked ~0.82.
+Stage-2 val token-accuracy peaked ~0.82. Stage-3 val token-acc peaked ~0.836 (ep13, val_loss 1.866).
+NOTE: the `cutedeadu/hme100k` Kaggle mirror ships only `train.txt` (no test captions), so stage-3
+train/val/test were carved 3-ways from it (~70k/2k/2k). The HME100K row is on that self-carved 2k
+held-out slice (in-distribution), NOT the official 24,607-image HME100K test set — say so on the résumé.
 
 ## Checkpoints
 - Google Drive folder (shared "anyone with link"): https://drive.google.com/drive/folders/1nSJGLWYajiinlNDYWbBibtLpdbL4tyr0
@@ -74,11 +77,11 @@ cd ~/scribe2tex && .venv/bin/python -m api.app        # http://127.0.0.1:7860
 ```
 
 ## In progress / TODO (next session picks these up)
-1. **Stage-3 HME100K fine-tune** (photo robustness) — script `scripts/prepare_hme100k.py` built.
-   Attach Kaggle dataset `cutedeadu/hme100k`, inspect its layout (`ls -R /kaggle/input`), adjust the
-   `--images-dir`/`--label-file` paths, build manifests, then:
-   `python -m model.train --stage finetune --tag hme100k --init-from checkpoints/finetune_best.pth
-    --train data/hme100k/train.jsonl --val data/hme100k/val.jsonl --epochs 15`
+1. ~~**Stage-3 HME100K fine-tune**~~ ✅ DONE (BLEU 88.3 / ExpRate 0.524). Mirror layout was
+   `/kaggle/input/datasets/cutedeadu/hme100k/{images/,train.txt}`; labels carry the `images/` prefix
+   so `--images-dir` is the parent, not `images/`. Run was resumable via
+   `$([ -f checkpoints/hme100k_last.pth ] && echo --resume checkpoints/hme100k_last.pth)`.
+   TODO: download `hme100k_best.pth` from Kaggle output → Drive + local `checkpoints/` for the demo.
 2. **pix2tex benchmark** — fill the comparison rows (pip install pix2tex, run on same 500 test images).
 3. **Deploy Gradio to Hugging Face Spaces** — permanent public link (`app_file: api/app.py`).
 4. **Résumé bullets** with the real numbers.
