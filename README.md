@@ -73,10 +73,12 @@ python tests/test_model.py       # needs torch (GPU box / Colab / Kaggle)
 ## Demo & API
 One `predict()` core (`api/predict.py`), two thin wrappers over it.
 
-**Weights:** `checkpoints/vocab.json` is in the repo; grab the handwriting checkpoint from the
+**Weights:** `checkpoints/vocab.json` is in the repo; the checkpoints live on the
 [v0.1.0 release](https://github.com/unstablerandomwalk/scribe2tex/releases/tag/v0.1.0):
+`hme100k_best.pth` (phone photos, best), `finetune_best.pth` (handwriting),
+`pretrain_best.pth` (printed).
 ```bash
-gh release download v0.1.0 -p finetune_best.pth -D checkpoints
+gh release download v0.1.0 -D checkpoints
 ```
 
 **Gradio demo** — upload an image → LaTeX + rendered preview + confidence:
