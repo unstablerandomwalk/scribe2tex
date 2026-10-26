@@ -28,9 +28,9 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the
 import io
 import os
 
-# The HME100K-fine-tuned checkpoint is the most robust across printed / handwritten
-# / photo input — make it the demo default unless the operator overrides MODEL_PATH.
-os.environ.setdefault("MODEL_PATH", "checkpoints/hme100k_best.pth")
+# Full-MathWriting checkpoint (20 epochs): ExpRate 0.445 vs 0.065 for hme100k_best on a
+# 200-image MathWriting test slice. Set MODEL_PATH=checkpoints/hme100k_best.pth for photos.
+os.environ.setdefault("MODEL_PATH", "checkpoints/mwfull20_best.pth")
 
 import gradio as gr  # noqa: E402
 from PIL import Image  # noqa: E402

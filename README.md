@@ -75,8 +75,8 @@ One `predict()` core (`api/predict.py`), two thin wrappers over it.
 
 **Weights:** `checkpoints/vocab.json` is in the repo; the checkpoints live on the
 [v0.1.0 release](https://github.com/unstablerandomwalk/scribe2tex/releases/tag/v0.1.0):
-`hme100k_best.pth` (phone photos, best), `finetune_best.pth` (handwriting),
-`pretrain_best.pth` (printed).
+`mwfull20_best.pth` (full MathWriting, 20 epochs; demo default), `hme100k_best.pth`
+(phone photos), `finetune_best.pth` (handwriting), `pretrain_best.pth` (printed).
 ```bash
 gh release download v0.1.0 -D checkpoints
 ```
