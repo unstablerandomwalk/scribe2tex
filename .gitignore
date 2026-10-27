@@ -8,3 +8,4 @@ checkpoints/*.pth
 .venv/
 venv/
 *.db
+third_party/

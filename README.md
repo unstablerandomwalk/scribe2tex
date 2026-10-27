@@ -47,6 +47,7 @@ model/    config, tokenizer, dataset, model (enc+attn+dec+seq2seq), train, infer
 scripts/  download_data.sh (im2latex), download_mathwriting.py (handwritten), build_vocab.py
 tests/    test_tokenizer.py (runs anywhere), test_model.py (needs torch)
 api/      FastAPI (/predict,/render,/health) + Gradio demo over one predict() core
+hmer/     TAMER adapter: manifests -> pinned upstream TAMER, train + evaluate
 ```
 
 ## Run
@@ -68,6 +69,46 @@ python -m model.evaluate --manifest data/mathwriting/test.jsonl --ckpt checkpoin
 # tests
 python tests/test_tokenizer.py   # pure python, runs now
 python tests/test_model.py       # needs torch (GPU box / Colab / Kaggle)
+```
+
+## Stronger model: TAMER (DenseNet + tree-aware Transformer), `hmer/`
+
+A second, near-state-of-the-art model built on an existing open-source implementation rather than
+written from scratch. The ResNet-18 + LSTM model above stays as it is.
+
+**Why TAMER.** Compared on 2026-10-27:
+
+| Repo | Licence | HME100K config | HME100K ExpRate (paper) | Released weights | Notes |
+|---|---|---|---|---|---|
+| [BTTR](https://github.com/Green-Wood/BTTR) | MIT | no | 64.1 | CROHME only | oldest of the family |
+| [CoMER](https://github.com/Green-Wood/CoMER) | none | no | 68.12 | CROHME only | last commit 2022 |
+| [ICAL](https://github.com/qingzhenduyu/ICAL) (ICDAR 2024) | none | yes | 69.06 | HME100K + CROHME | same code base, one step older |
+| [TAMER](https://github.com/qingzhenduyu/TAMER) (AAAI 2025) | none | **yes** | **69.50** | **HME100K + CROHME** | CoMER + tree-structure head |
+
+TAMER has the best published HME100K score of the family, and like ICAL it releases HME100K
+weights, so fine-tuning starts at about 69% on photos instead of from zero. Upstream trained it
+with batches of 8 on 11 GB GPUs, so it fits a 16 GB T4. It has no licence file, so it is **not
+vendored**: `scripts/fetch_tamer.sh` clones it into `third_party/TAMER` (gitignored) at a pinned
+commit. Upstream targets PyTorch 1.8 + Lightning 1.4, so `hmer/` uses only its `nn.Module`s and
+supplies its own training loop, data pipeline and scoring.
+
+**What the adapter does.** `hmer/data.py` reads the same JSONL manifests (`{"image", "latex"}`).
+HME100K labels are already tokenized in TAMER's dictionary and pass through unchanged. Raw LaTeX
+from MathWriting goes through `model/tokenizer.py`. Tokens TAMER has never seen are added to the
+end of its dictionary, so the pretrained ids stay where they are. TAMER has no `<unk>`, so its
+own dictionary replaces `Vocab`. `hmer/evaluate.py` scores exactly like `model/evaluate.py`: both
+sides are re-tokenized with `tokenize_latex`, and BLEU, ExpRate, ≤1 and ≤2 use the same formulas,
+so the numbers can sit in the same table.
+
+```bash
+bash scripts/fetch_tamer.sh
+pip install einops pytorch-lightning torchmetrics opencv-python-headless
+# zero-shot: released HME100K weights (--invert / --no-invert: see Kaggle cell 4)
+python -m hmer.evaluate --manifest data/hme100k/test.jsonl --ckpt pretrained --no-invert --limit 500
+# fine-tune on photos + handwriting (resumable: --resume checkpoints/tamer_mix_last.pth)
+python -m hmer.train --train data/mix_train.jsonl --val data/mix_val.jsonl --init pretrained --tag tamer_mix
+python -m hmer.evaluate --manifest data/mathwriting/test.jsonl --ckpt checkpoints/tamer_mix_best.pth --limit 200
+python -m pytest tests/test_hmer_adapter.py     # adapter only, no TAMER needed
 ```
 
 ## Demo & API
