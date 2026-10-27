@@ -53,6 +53,49 @@ def test_greedy_returns_id_lists():
     assert isinstance(seqs, list) and len(seqs) == 1
 
 
+LEGACY = {**CONFIG, "fine_grid": False, "coverage": False}
+
+
+def test_fine_grid_doubles_feature_rows():
+    img = torch.randn(1, 3, 128, 256)
+    _, (h32, _) = Encoder(CONFIG["encoder_dim"], pretrained=False)(img)
+    _, (h16, _) = Encoder(CONFIG["encoder_dim"], pretrained=False, fine_grid=True)(img)
+    assert (h32, h16) == (4, 8)
+
+
+def test_coverage_warm_start_matches_old_model():
+    import tempfile
+    from model.model import warm_start
+    torch.manual_seed(0)
+    old = Seq2Seq(50, LEGACY, pretrained=False).eval()
+    path = Path(tempfile.mkdtemp()) / "old.pth"
+    torch.save({"model": old.state_dict()}, path)
+    new = Seq2Seq(50, {**LEGACY, "coverage": True}, pretrained=False).eval()
+    missing = warm_start(new, path, "cpu")
+    assert missing and all("coverage_att" in k for k in missing)
+    caps = torch.randint(4, 50, (1, 8)); caps[:, 0] = SOS_ID
+    img = torch.randn(1, 3, 128, 256)
+    assert torch.allclose(old(img, caps)[0], new(img, caps)[0], atol=1e-6)
+
+
+def test_load_model_rebuilds_legacy_checkpoint():
+    import tempfile
+    from model.model import load_model
+    path = Path(tempfile.mkdtemp()) / "legacy.pth"
+    torch.save({"model": Seq2Seq(50, LEGACY, pretrained=False).state_dict()}, path)
+    model = load_model(path, 50, CONFIG, "cpu")             # no "arch" key -> legacy
+    assert model.decoder.attention.coverage_att is None
+
+
+def test_train_augmentation_keeps_shape():
+    from PIL import Image
+    from model.dataset import transform_image
+    img = Image.new("L", (300, 80), 255)
+    for _ in range(20):                                   # hit the random branches
+        t, hw = transform_image(img, 128, 1024, train=True)
+        assert t.shape[:2] == (3, 128) and hw[0] == 128
+
+
 def _run():
     fns = [f for n, f in sorted(globals().items()) if n.startswith("test_")]
     for f in fns:

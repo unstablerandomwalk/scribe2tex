@@ -13,7 +13,7 @@ import torch
 from model.config import CKPT_DIR, CONFIG, VOCAB_PATH
 from model.dataset import transform_image
 from model.inference import beam_search
-from model.model import Seq2Seq
+from model.model import load_model
 from model.tokenizer import Vocab
 
 MODEL_PATH = os.environ.get("MODEL_PATH", str(CKPT_DIR / "finetune_best.pth"))
@@ -25,8 +25,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 def _load():
     """Load weights + vocab once (cached across requests)."""
     vocab = Vocab.load(VOCAB_FILE)
-    model = Seq2Seq(len(vocab), CONFIG, pretrained=False).to(DEVICE)
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE)["model"])
+    model = load_model(MODEL_PATH, len(vocab), CONFIG, DEVICE)
     model.eval()
     return model, vocab
 

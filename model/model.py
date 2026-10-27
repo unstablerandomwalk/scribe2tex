@@ -17,10 +17,13 @@ from .config import EOS_ID, PAD_ID, SOS_ID
 class Encoder(nn.Module):
     """ResNet-18 backbone (avgpool+fc removed) -> ((B, H'*W', enc), (H', W'))."""
 
-    def __init__(self, encoder_dim: int = 256, pretrained: bool = True):
+    def __init__(self, encoder_dim: int = 256, pretrained: bool = True, fine_grid: bool = False):
         super().__init__()
         weights = ResNet18_Weights.DEFAULT if pretrained else None
         resnet = torchvision.models.resnet18(weights=weights)
+        if fine_grid:  # total stride 32 -> 16: 8 feature rows at height 128 instead of 4
+            resnet.layer4[0].conv1.stride = (1, 1)
+            resnet.layer4[0].downsample[0].stride = (1, 1)
         self.backbone = nn.Sequential(*list(resnet.children())[:-2])
         self.projection = nn.Conv2d(512, encoder_dim, kernel_size=1)
 
@@ -33,18 +36,30 @@ class Encoder(nn.Module):
 
 
 class BahdanauAttention(nn.Module):
-    """Additive attention: score = v^T tanh(W_e e + W_d h), with optional pad mask."""
+    """Additive attention: score = v^T tanh(W_e e + W_d h [+ W_c cov]), with optional
+    pad mask. Coverage (sum of past alphas per cell) lets the model see where it has
+    already looked, so it stops re-reading or skipping symbols."""
 
-    def __init__(self, encoder_dim: int, decoder_dim: int, attention_dim: int):
+    def __init__(self, encoder_dim: int, decoder_dim: int, attention_dim: int,
+                 coverage: bool = False):
         super().__init__()
         self.encoder_att = nn.Linear(encoder_dim, attention_dim)
         self.decoder_att = nn.Linear(decoder_dim, attention_dim)
         self.full_att = nn.Linear(attention_dim, 1)
+        self.coverage_att = None
+        if coverage:
+            # ponytail: per-cell coverage (Tu et al. 2016); WAP's 2-D conv over the
+            # coverage map is the upgrade if neighbouring-cell context turns out to matter.
+            self.coverage_att = nn.Linear(1, attention_dim, bias=False)
+            nn.init.zeros_(self.coverage_att.weight)  # warm start == pre-coverage model
 
-    def forward(self, encoder_out, decoder_hidden, mask=None):
+    def forward(self, encoder_out, decoder_hidden, mask=None, cov=None):
         att1 = self.encoder_att(encoder_out)                        # (B,HW,att)
         att2 = self.decoder_att(decoder_hidden).unsqueeze(1)        # (B,1,att)
-        scores = self.full_att(torch.tanh(att1 + att2)).squeeze(2)  # (B,HW)
+        energy = att1 + att2
+        if self.coverage_att is not None and cov is not None:
+            energy = energy + self.coverage_att(cov.unsqueeze(2))   # (B,HW,att)
+        scores = self.full_att(torch.tanh(energy)).squeeze(2)       # (B,HW)
         if mask is not None:
             scores = scores.masked_fill(~mask, -1e9)                # padding -> ~0 weight
         alpha = F.softmax(scores, dim=1)
@@ -56,11 +71,11 @@ class Decoder(nn.Module):
     """LSTMCell decoder with attention; one LaTeX token per timestep."""
 
     def __init__(self, vocab_size, embedding_dim, encoder_dim, decoder_dim,
-                 attention_dim, dropout=0.3):
+                 attention_dim, dropout=0.3, coverage=False):
         super().__init__()
         self.vocab_size = vocab_size
         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=PAD_ID)
-        self.attention = BahdanauAttention(encoder_dim, decoder_dim, attention_dim)
+        self.attention = BahdanauAttention(encoder_dim, decoder_dim, attention_dim, coverage)
         self.lstm = nn.LSTMCell(embedding_dim + encoder_dim, decoder_dim)
         self.init_h = nn.Linear(encoder_dim, decoder_dim)
         self.init_c = nn.Linear(encoder_dim, decoder_dim)
@@ -68,30 +83,32 @@ class Decoder(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def init_hidden(self, encoder_out, mask=None):
-        """Mean over VALID cells only (padding excluded) -> initial (h, c)."""
+        """Mean over VALID cells only (padding excluded) -> initial state (h, c, cov)."""
         if mask is None:
             mean = encoder_out.mean(dim=1)
         else:
             m = mask.unsqueeze(2).float()
             mean = (encoder_out * m).sum(1) / m.sum(1).clamp(min=1.0)
-        return self.init_h(mean), self.init_c(mean)
+        cov = encoder_out.new_zeros(encoder_out.shape[:2])     # (B,HW) attention so far
+        return self.init_h(mean), self.init_c(mean), cov
 
-    def step(self, token, h, c, encoder_out, mask=None):
-        """One decode step. token:(B,) -> logits:(B,V), alpha:(B,HW), (h,c)."""
-        emb = self.embedding(token)                             # (B,emb)
-        context, alpha = self.attention(encoder_out, h, mask)   # (B,enc),(B,HW)
+    def step(self, token, state, encoder_out, mask=None):
+        """One decode step. token:(B,), state:(h,c,cov) -> logits:(B,V), alpha:(B,HW), state."""
+        h, c, cov = state
+        emb = self.embedding(token)                                  # (B,emb)
+        context, alpha = self.attention(encoder_out, h, mask, cov)   # (B,enc),(B,HW)
         h, c = self.lstm(torch.cat([emb, context], dim=1), (h, c))
         logits = self.fc(self.dropout(torch.cat([h, context], dim=1)))
-        return logits, alpha, (h, c)
+        return logits, alpha, (h, c, cov + alpha)
 
     def forward(self, encoder_out, captions, mask=None, teacher_forcing_ratio=1.0):
         """captions:(B,T) with <SOS>..<EOS>. Returns logits:(B,T-1,V), alphas:(B,T-1,HW)."""
         B, T = captions.shape
-        h, c = self.init_hidden(encoder_out, mask)
+        state = self.init_hidden(encoder_out, mask)
         logits_all, alphas = [], []
         token = captions[:, 0]
         for t in range(1, T):
-            logits, alpha, (h, c) = self.step(token, h, c, encoder_out, mask)
+            logits, alpha, state = self.step(token, state, encoder_out, mask)
             logits_all.append(logits)
             alphas.append(alpha)
             use_teacher = torch.rand(1).item() < teacher_forcing_ratio
@@ -102,9 +119,10 @@ class Decoder(nn.Module):
 class Seq2Seq(nn.Module):
     def __init__(self, vocab_size, cfg, pretrained=True):
         super().__init__()
-        self.encoder = Encoder(cfg["encoder_dim"], pretrained)
+        self.encoder = Encoder(cfg["encoder_dim"], pretrained, cfg.get("fine_grid", False))
         self.decoder = Decoder(vocab_size, cfg["embedding_dim"], cfg["encoder_dim"],
-                               cfg["decoder_dim"], cfg["attention_dim"], cfg["dropout"])
+                               cfg["decoder_dim"], cfg["attention_dim"], cfg["dropout"],
+                               cfg.get("coverage", False))
 
     @staticmethod
     def build_mask(valid_hw, in_h, in_w, feat_h, feat_w, device):
@@ -132,12 +150,12 @@ class Seq2Seq(nn.Module):
         feats, (fh, fw) = self.encoder(images)
         mask = self.build_mask(valid_hw, images.size(2), images.size(3), fh, fw, images.device)
         B = feats.size(0)
-        h, c = self.decoder.init_hidden(feats, mask)
+        state = self.decoder.init_hidden(feats, mask)
         token = torch.full((B,), SOS_ID, dtype=torch.long, device=feats.device)
         done = torch.zeros(B, dtype=torch.bool, device=feats.device)
         seqs = [[] for _ in range(B)]
         for _ in range(max_len):
-            logits, _, (h, c) = self.decoder.step(token, h, c, feats, mask)
+            logits, _, state = self.decoder.step(token, state, feats, mask)
             token = logits.argmax(1)
             for i in range(B):
                 if done[i]:
@@ -149,3 +167,31 @@ class Seq2Seq(nn.Module):
             if done.all():
                 break
         return seqs
+
+
+# Checkpoints saved before fine_grid/coverage existed carry no "arch" and use neither.
+ARCH_KEYS = ("fine_grid", "coverage")
+LEGACY_ARCH = {k: False for k in ARCH_KEYS}
+
+
+def arch_of(cfg):
+    return {k: cfg.get(k, False) for k in ARCH_KEYS}
+
+
+def load_model(path, vocab_size, cfg, device):
+    """Rebuild the model with the architecture the checkpoint was trained with."""
+    ck = torch.load(path, map_location=device)
+    model = Seq2Seq(vocab_size, {**cfg, **ck.get("arch", LEGACY_ARCH)}, pretrained=False)
+    model.load_state_dict(ck["model"])
+    return model.to(device)
+
+
+def warm_start(model, path, device):
+    """Load older weights into a (possibly newer) architecture. Only the new coverage
+    weights may be missing; they start at zero, so behaviour starts out unchanged."""
+    missing, unexpected = model.load_state_dict(
+        torch.load(path, map_location=device)["model"], strict=False)
+    bad = [k for k in missing if "coverage_att" not in k] + list(unexpected)
+    if bad:
+        raise RuntimeError(f"{path} doesn't fit this architecture: {bad[:5]}")
+    return missing

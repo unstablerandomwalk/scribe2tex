@@ -18,6 +18,8 @@ CONFIG = {
     "attention_dim": 128,
     "embedding_dim": 128,
     "dropout": 0.3,
+    "fine_grid": True,              # encoder stride 16 (8 feature rows at h=128), not 32
+    "coverage": True,               # attention sees where it has already looked
 
     # Training
     "batch_size": 32,

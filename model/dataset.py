@@ -5,6 +5,9 @@ Quality-first pipeline:
   (white). Aspect ratio is NEVER distorted.
 - each sample carries its valid (h, w) so attention can mask out the padding.
 """
+import io
+import random
+
 import torch
 import torchvision.transforms as T
 from PIL import Image
@@ -19,14 +22,37 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 _POST = T.Compose([T.ToTensor(), T.Normalize(IMAGENET_MEAN, IMAGENET_STD)])
 
 
+def _shadow(img: Image.Image) -> Image.Image:
+    """Darken one side of the page with a linear gradient, like a phone's shadow."""
+    w, h = img.size
+    strength = random.uniform(0.3, 0.7)
+    ramp = torch.linspace(1 - strength, 1, w if random.random() < 0.5 else h)
+    if random.random() < 0.5:
+        ramp = ramp.flip(0)
+    shade = ramp.view(1, -1) if ramp.numel() == w else ramp.view(-1, 1)
+    t = T.functional.pil_to_tensor(img).float() * shade
+    return T.functional.to_pil_image(t.clamp(0, 255).byte())
+
+
+def _jpeg(img: Image.Image) -> Image.Image:
+    """Re-encode at low quality to mimic phone-camera compression artefacts."""
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=random.randint(20, 60))
+    return Image.open(io.BytesIO(buf.getvalue())).convert(img.mode)
+
+
 def _pre(train: bool):
-    """Grayscale->3ch (keeps pretrained conv1 valid) + optional augmentation. PIL->PIL."""
+    """Grayscale->3ch (keeps pretrained conv1 valid) + optional augmentation. PIL->PIL.
+    Training aug mimics phone photos: tilt/perspective, uneven light, blur, JPEG."""
     aug = []
     if train:
         aug = [
             T.RandomApply([T.RandomAffine(degrees=5, shear=5, translate=(0.02, 0.02))], p=0.5),
-            T.RandomApply([T.GaussianBlur(3)], p=0.3),
-            T.ColorJitter(brightness=0.2, contrast=0.2),
+            T.RandomPerspective(distortion_scale=0.15, p=0.3, fill=255),
+            T.RandomApply([T.Lambda(_shadow)], p=0.3),
+            T.RandomApply([T.GaussianBlur(3, sigma=(0.1, 1.5))], p=0.3),
+            T.ColorJitter(brightness=0.4, contrast=0.4),
+            T.RandomApply([T.Lambda(_jpeg)], p=0.3),
         ]
     return T.Compose([T.Grayscale(num_output_channels=3), *aug])
 

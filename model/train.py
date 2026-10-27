@@ -20,7 +20,7 @@ from tqdm.auto import tqdm
 
 from .config import CKPT_DIR, CONFIG, PAD_ID, VOCAB_PATH
 from .dataset import LatexImageDataset, collate_fn
-from .model import Seq2Seq
+from .model import Seq2Seq, arch_of, warm_start
 from .tokenizer import Vocab
 
 
@@ -107,8 +107,8 @@ def main():
 
     start, best_val, tf = 0, float("inf"), cfg["teacher_forcing_ratio"]
     if args.init_from:
-        model.load_state_dict(torch.load(args.init_from, map_location=device)["model"])
-        print(f"warm-started from {args.init_from}")
+        new = warm_start(model, args.init_from, device)
+        print(f"warm-started from {args.init_from}" + (f" (new: {new})" if new else ""))
     if args.resume:
         ck = torch.load(args.resume, map_location=device)
         model.load_state_dict(ck["model"]); opt.load_state_dict(ck["opt"])
@@ -131,7 +131,7 @@ def main():
         if improved:
             best_val = va_loss
         ck = {"model": model.state_dict(), "opt": opt.state_dict(), "epoch": epoch,
-              "best_val": best_val, "tf": tf, "vocab_size": len(vocab)}
+              "best_val": best_val, "tf": tf, "vocab_size": len(vocab), "arch": arch_of(cfg)}
         torch.save(ck, CKPT_DIR / f"{tag}_last.pth")
         if improved:
             torch.save(ck, CKPT_DIR / f"{tag}_best.pth")
