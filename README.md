@@ -86,7 +86,8 @@ written from scratch. The ResNet-18 + LSTM model above stays as it is.
 | [TAMER](https://github.com/qingzhenduyu/TAMER) (AAAI 2025) | none | **yes** | **69.50** | **HME100K + CROHME** | CoMER + tree-structure head |
 
 TAMER has the best published HME100K score of the family, and like ICAL it releases HME100K
-weights, so fine-tuning starts at about 69% on photos instead of from zero. Upstream trained it
+weights, so fine-tuning starts at about 68.5% on photos instead of from zero. (Its 69.50 "w/ fusion"
+weights need decoder layers that aren't in the published code, so `hmer/` uses the 68.52 ones.) Upstream trained it
 with batches of 8 on 11 GB GPUs, so it fits a 16 GB T4. It has no licence file, so it is **not
 vendored**: `scripts/fetch_tamer.sh` clones it into `third_party/TAMER` (gitignored) at a pinned
 commit. Upstream targets PyTorch 1.8 + Lightning 1.4, so `hmer/` uses only its `nn.Module`s and

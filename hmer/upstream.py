@@ -19,9 +19,9 @@ from tamer.datamodule.latex2gtd import to_struct                         # noqa:
 from tamer.model.tamer import TAMER                                      # noqa: E402
 from tamer.utils.utils import ce_loss, to_bi_tgt_out, to_struct_output   # noqa: E402
 
-# Released HME100K weights, "w/ fusion" row of the TAMER README (69.50 ExpRate on the official test).
-# version_3 ships no dictionary.txt; it shares version_1's 245-word HME100K one (vocab_size 248).
-PRETRAINED = TAMER_DIR / "lightning_logs/version_3/checkpoints/epoch=55-step=175503-val_ExpRate=0.6954.ckpt"
+# Released HME100K weights, "TAMER" row of its README (68.52 ExpRate on the official test).
+# Not version_3 ("w/ fusion", 69.50): it has decoder.fusion layers the published code lacks.
+PRETRAINED = TAMER_DIR / "lightning_logs/version_1/checkpoints/epoch=51-step=162967-val_ExpRate=0.6851.ckpt"
 PRETRAINED_DICT = TAMER_DIR / "lightning_logs/version_1/dictionary.txt"
 ARCH_KEYS = ("d_model", "growth_rate", "num_layers", "nhead", "num_decoder_layers",
              "dim_feedforward", "dropout", "dc", "cross_coverage", "self_coverage")
