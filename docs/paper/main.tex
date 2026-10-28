@@ -223,9 +223,43 @@ Baseline (stride 32, no coverage) & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
 \tbd{Discussion of Table~\ref{tab:ablation}.}
 
 \subsection{Error analysis}
-\tbd{Error breakdown by expression length (token-count buckets) and by structure (fractions, scripts, radicals, matrices).}
+Table~\ref{tab:errors} breaks ExpRate down by reference length and by the structures an expression contains, using the per-sample predictions on the 500 MathWriting test images. For the 40k-image model, accuracy falls steadily with length, from 0.412 on expressions of at most 10 tokens to 0.128 on those longer than 30; this is the expected weakness of a recurrent decoder, where a single early mistake makes the whole expression wrong. With the full training split, every bucket improves, and the longest bucket rises to 0.487, although it contains only 39 expressions. Expressions with sub- or superscripts are the most common (372 of 500) and among the hardest for both models.
 
-\tbd{Figure: attention maps over the feature grid for one correctly and one incorrectly recognized expression.}
+The remaining errors are mostly single-symbol confusions between similar-looking handwritten glyphs rather than structural failures. For example, the full-data model reads $\overline{X}+X_{\xi}$ as $\overline{x}+x_{\xi}$ (case), and $\forall i[|R_i|=K]$ as $\ldots=14$ (a handwritten K read as the digits 1 and 4).
+
+\begin{table}[t]
+\caption{ExpRate by expression length and structure on 500 MathWriting test images (number of expressions in parentheses).}
+\label{tab:errors}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrr}
+\toprule
+Subset & MW 40k & MW full \\
+\midrule
+1--10 tokens (85) & 0.412 & 0.576 \\
+11--20 tokens (257) & 0.327 & 0.490 \\
+21--30 tokens (119) & 0.286 & 0.378 \\
+$>$30 tokens (39) & 0.128 & 0.487 \\
+\midrule
+has \verb|\frac| (141) & 0.333 & 0.496 \\
+has sub/superscript (372) & 0.298 & 0.446 \\
+has \verb|\sqrt| (39) & 0.410 & 0.641 \\
+has \verb|\sum|, \verb|\int|, \verb|\prod| or \verb|\lim| (25) & 0.360 & 0.440 \\
+has \verb|\begin| (array/matrix) (15) & 0.267 & 0.600 \\
+none of the above (74) & 0.324 & 0.527 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Fig.~\ref{fig:att} shows where the full-data model attends while emitting selected tokens (greedy decoding, so the decoded sequence can differ from beam search; here both agree). Attention moves left to right and settles on the symbol being written. Closing braces of a subscript attend diffusely, since they have no ink of their own. In the incorrect example, attention for the final tokens lands on the handwritten K, which the model splits into the digits 1 and 4.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figs/att_0000078.png}\\[2pt]
+\includegraphics[width=\columnwidth]{figs/att_0000004.png}
+\caption{Attention maps of the full-data model for selected decoding steps (panel title = emitted token). Top: correct, $\frac{3\pi}{2}<x<2\pi$. Bottom: incorrect, $\forall i[|R_i|=K]$ read with K as ``14''.}
+\label{fig:att}
+\end{figure}
 
 \textbf{Confidence.} Because the model outputs a length-normalized probability, uncertain predictions can be flagged to the user. Table~\ref{tab:selective} reports ExpRate when only the most confident fraction of predictions is kept. Accuracy rises steadily as coverage falls, so the confidence score ranks predictions usefully, even though mean confidence on wrong answers (0.880 for the 40k model, 0.927 for the full-data model) is only moderately below that on correct answers (0.953 and 0.976).
 
@@ -255,23 +289,23 @@ MathWriting full & 0.478 & 0.568 & 0.680 & 0.785 & 0.870 \\
 
 %=====================================================================
 \section{Conclusion}
-A classic ResNet-18 + attention + LSTM model, trained in stages from printed to handwritten to photographed input with a single shared vocabulary, reaches BLEU 79.4 and ExpRate 0.32 on held-out handwritten expressions. \tbd{One sentence on the pix2tex comparison and one on the ablation.} Future work includes evaluation on full and official test splits including CROHME, joint (rather than sequential) multi-domain training to avoid forgetting, and a preprocessing front end (cropping and binarization) for raw phone photographs.
+A classic ResNet-18 + attention + LSTM model, trained in stages from printed to handwritten to photographed input with a single shared vocabulary, reaches BLEU 79.4 and ExpRate 0.32 on held-out handwritten expressions. Training on the full MathWriting human split raises this to BLEU 86.7 and ExpRate 0.478, while off-the-shelf pix2tex, a printed-formula transformer, recognizes none of the same handwritten expressions exactly. \tbd{one sentence on the ablation} Future work includes evaluation on full and official test splits including CROHME, joint (rather than sequential) multi-domain training to avoid forgetting, and a preprocessing front end (cropping and binarization) for raw phone photographs.
 
 \section*{Acknowledgment}
 \tbd{acknowledgment, e.g.\ lab, supervisor, compute (Kaggle)}
 
 %=====================================================================
 \begin{thebibliography}{99}
-\bibitem{deng2017im2markup} Y.~Deng, A.~Kanervisto, J.~Ling, and A.~M.~Rush, ``Image-to-markup generation with coarse-to-fine attention,'' in \emph{Proc. ICML}, 2017.
-\bibitem{zhang2017wap} J.~Zhang, J.~Du, S.~Zhang, D.~Liu, Y.~Hu, J.~Hu, S.~Wei, and L.~Dai, ``Watch, attend and parse: An end-to-end neural network based approach to handwritten mathematical expression recognition,'' \emph{Pattern Recognition}, vol.~71, 2017.
+\bibitem{deng2017im2markup} Y.~Deng, A.~Kanervisto, J.~Ling, and A.~M.~Rush, ``Image-to-markup generation with coarse-to-fine attention,'' in \emph{Proc. ICML}, PMLR vol.~70, 2017, pp.~980--989.
+\bibitem{zhang2017wap} J.~Zhang, J.~Du, S.~Zhang, D.~Liu, Y.~Hu, J.~Hu, S.~Wei, and L.~Dai, ``Watch, attend and parse: An end-to-end neural network based approach to handwritten mathematical expression recognition,'' \emph{Pattern Recognition}, vol.~71, pp.~196--206, 2017.
 \bibitem{bahdanau2015} D.~Bahdanau, K.~Cho, and Y.~Bengio, ``Neural machine translation by jointly learning to align and translate,'' in \emph{Proc. ICLR}, 2015.
-\bibitem{xu2015show} K.~Xu \emph{et al.}, ``Show, attend and tell: Neural image caption generation with visual attention,'' in \emph{Proc. ICML}, 2015.
-\bibitem{tu2016coverage} Z.~Tu, Z.~Lu, Y.~Liu, X.~Liu, and H.~Li, ``Modeling coverage for neural machine translation,'' in \emph{Proc. ACL}, 2016.
-\bibitem{he2016resnet} K.~He, X.~Zhang, S.~Ren, and J.~Sun, ``Deep residual learning for image recognition,'' in \emph{Proc. CVPR}, 2016.
+\bibitem{xu2015show} K.~Xu \emph{et al.}, ``Show, attend and tell: Neural image caption generation with visual attention,'' in \emph{Proc. ICML}, PMLR vol.~37, 2015, pp.~2048--2057.
+\bibitem{tu2016coverage} Z.~Tu, Z.~Lu, Y.~Liu, X.~Liu, and H.~Li, ``Modeling coverage for neural machine translation,'' in \emph{Proc. ACL}, 2016, pp.~76--85.
+\bibitem{he2016resnet} K.~He, X.~Zhang, S.~Ren, and J.~Sun, ``Deep residual learning for image recognition,'' in \emph{Proc. CVPR}, 2016, pp.~770--778.
 \bibitem{pix2tex} L.~Blecher, ``pix2tex: Using a ViT to convert images of equations into LaTeX code,'' GitHub repository. [Online]. Available: \url{https://github.com/lukas-blecher/LaTeX-OCR}
-\bibitem{mathwriting} P.~Gervais, A.~Fadeeva, and A.~Maksai, ``MathWriting: A dataset for handwritten mathematical expression recognition,'' \tbd{venue and year}.
-\bibitem{hme100k} Y.~Yuan \emph{et al.}, ``Syntax-aware network for handwritten mathematical expression recognition,'' in \emph{Proc. CVPR}, 2022.
-\bibitem{papineni2002bleu} K.~Papineni, S.~Roukos, T.~Ward, and W.-J.~Zhu, ``BLEU: a method for automatic evaluation of machine translation,'' in \emph{Proc. ACL}, 2002.
+\bibitem{mathwriting} P.~Gervais, A.~Fadeeva, and A.~Maksai, ``MathWriting: A dataset for handwritten mathematical expression recognition,'' arXiv:2404.10690, 2024.
+\bibitem{hme100k} Y.~Yuan \emph{et al.}, ``Syntax-aware network for handwritten mathematical expression recognition,'' in \emph{Proc. CVPR}, 2022, pp.~4553--4562.
+\bibitem{papineni2002bleu} K.~Papineni, S.~Roukos, T.~Ward, and W.-J.~Zhu, ``BLEU: a method for automatic evaluation of machine translation,'' in \emph{Proc. ACL}, 2002, pp.~311--318.
 \end{thebibliography}
 
 \end{document}
