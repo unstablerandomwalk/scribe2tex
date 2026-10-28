@@ -41,11 +41,18 @@ def _jpeg(img: Image.Image) -> Image.Image:
     return Image.open(io.BytesIO(buf.getvalue())).convert(img.mode)
 
 
-def _pre(train: bool):
+def _pre(train: bool, photo_aug: bool = True):
     """Grayscale->3ch (keeps pretrained conv1 valid) + optional augmentation. PIL->PIL.
-    Training aug mimics phone photos: tilt/perspective, uneven light, blur, JPEG."""
+    Training aug mimics phone photos: tilt/perspective, uneven light, blur, JPEG.
+    photo_aug=False is the lighter pre-photo aug (affine, blur, jitter) for ablations."""
     aug = []
-    if train:
+    if train and not photo_aug:
+        aug = [
+            T.RandomApply([T.RandomAffine(degrees=5, shear=5, translate=(0.02, 0.02))], p=0.5),
+            T.RandomApply([T.GaussianBlur(3)], p=0.3),
+            T.ColorJitter(brightness=0.2, contrast=0.2),
+        ]
+    elif train:
         aug = [
             T.RandomApply([T.RandomAffine(degrees=5, shear=5, translate=(0.02, 0.02))], p=0.5),
             T.RandomPerspective(distortion_scale=0.15, p=0.3, fill=255),
@@ -72,12 +79,13 @@ def _resize_pad(img: Image.Image, height: int, max_width: int):
     return img, nh, nw
 
 
-def transform_image(img, height: int, max_width: int, train: bool = False):
+def transform_image(img, height: int, max_width: int, train: bool = False,
+                    photo_aug: bool = True):
     """img: PIL or path -> (tensor (3,H,W), valid_hw tensor([h, w])). Shared by
     Dataset, evaluate, and the API so preprocessing never drifts between them."""
     if not isinstance(img, Image.Image):
         img = Image.open(img)
-    img = _pre(train)(img.convert("L"))
+    img = _pre(train, photo_aug)(img.convert("L"))
     img, vh, vw = _resize_pad(img, height, max_width)
     return _POST(img), torch.tensor([vh, vw], dtype=torch.long)
 
@@ -85,20 +93,23 @@ def transform_image(img, height: int, max_width: int, train: bool = False):
 class LatexImageDataset(Dataset):
     """samples: list of (image_path, latex_string)."""
 
-    def __init__(self, samples, vocab: Vocab, height, max_width, train, max_seq_length=200):
+    def __init__(self, samples, vocab: Vocab, height, max_width, train, max_seq_length=200,
+                 photo_aug=True):
         self.samples = samples
         self.vocab = vocab
         self.height = height
         self.max_width = max_width
         self.train = train
         self.max_seq_length = max_seq_length
+        self.photo_aug = photo_aug
 
     def __len__(self):
         return len(self.samples)
 
     def __getitem__(self, idx):
         path, latex = self.samples[idx]
-        img, valid_hw = transform_image(path, self.height, self.max_width, self.train)
+        img, valid_hw = transform_image(path, self.height, self.max_width, self.train,
+                                         self.photo_aug)
         ids = self.vocab.encode(tokenize_latex(latex))[: self.max_seq_length]
         return img, torch.tensor(ids, dtype=torch.long), valid_hw
 

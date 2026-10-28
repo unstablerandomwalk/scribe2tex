@@ -75,7 +75,8 @@ def run_epoch(model, loader, opt, cfg, device, tf_ratio, train, epoch=None):
 
 def make_loader(manifest, vocab, cfg, train):
     ds = LatexImageDataset(load_manifest(manifest), vocab, cfg["image_height"],
-                           cfg["image_max_width"], train, cfg["max_seq_length"])
+                           cfg["image_max_width"], train, cfg["max_seq_length"],
+                           cfg.get("photo_aug", True))
     return DataLoader(ds, batch_size=cfg["batch_size"], shuffle=train, num_workers=2,
                       collate_fn=collate_fn, pin_memory=True)
 
@@ -89,10 +90,17 @@ def main():
     ap.add_argument("--resume", help="resume same-stage checkpoint")
     ap.add_argument("--epochs", type=int)
     ap.add_argument("--tag", help="checkpoint filename prefix (default: --stage)")
+    # ablation switches: turn off one improvement at a time
+    ap.add_argument("--no-fine-grid", action="store_true")
+    ap.add_argument("--no-coverage", action="store_true")
+    ap.add_argument("--no-photo-aug", action="store_true")
     args = ap.parse_args()
 
     tag = args.tag or args.stage
-    cfg = dict(CONFIG)
+    cfg = {**CONFIG, "fine_grid": CONFIG["fine_grid"] and not args.no_fine_grid,
+           "coverage": CONFIG["coverage"] and not args.no_coverage,
+           "photo_aug": not args.no_photo_aug}
+    print(f"arch: {arch_of(cfg)} photo_aug={cfg['photo_aug']}")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"device: {device}")
     vocab = Vocab.load(VOCAB_PATH)  # stage-1 im2latex vocab, reused for the fine-tune

@@ -3,6 +3,7 @@ the most-confident X% of predictions). pix2tex is scored by the same model/metri
     python -m model.evaluate --manifest data/crohme/test.jsonl --ckpt checkpoints/finetune_best.pth
 """
 import argparse
+import json
 
 import torch
 from tqdm.auto import tqdm
@@ -16,7 +17,7 @@ from .tokenizer import Vocab, tokenize_latex
 from .train import load_manifest
 
 
-def evaluate(model, samples, vocab, cfg, device, beam_width=5, limit=None):
+def evaluate(model, samples, vocab, cfg, device, beam_width=5, limit=None, out=None):
     if limit:
         samples = samples[:limit]
     refs, hyps, confs = [], [], []
@@ -27,6 +28,10 @@ def evaluate(model, samples, vocab, cfg, device, beam_width=5, limit=None):
                                  beam_width, cfg["max_seq_length"], cfg["length_penalty"])
         refs.append(tokenize_latex(latex)); hyps.append(pred.split()); confs.append(conf)
     correct = [r == h for r, h in zip(refs, hyps)]
+    if out:  # per-sample predictions, for error analysis
+        with open(out, "w") as f:
+            for (path, _), r, h, c in zip(samples, refs, hyps, confs):
+                f.write(json.dumps({"image": path, "ref": r, "hyp": h, "conf": c}) + "\n")
     return {**score(refs, hyps), **selective(correct, confs)}
 
 
@@ -36,13 +41,14 @@ def main():
     ap.add_argument("--ckpt", required=True)
     ap.add_argument("--beam", type=int, default=CONFIG["beam_width"])
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--out", help="write per-sample predictions (JSONL) here")
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     vocab = Vocab.load(VOCAB_PATH)
     model = load_model(args.ckpt, len(vocab), CONFIG, device)
     print(evaluate(model, load_manifest(args.manifest), vocab, CONFIG, device,
-                   args.beam, args.limit))
+                   args.beam, args.limit, args.out))
 
 
 if __name__ == "__main__":
