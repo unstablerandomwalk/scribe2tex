@@ -34,7 +34,7 @@ Manipal, India}}
 \IEEEpubidadjcol
 
 \begin{abstract}
-We study image-to-\LaTeX{} recognition of mathematical expressions with a deliberately classic encoder--decoder: a ResNet-18 convolutional encoder, additive (Bahdanau) attention and an LSTM decoder with beam search. The model is trained in three stages that move progressively further from clean, printed input: printed formulas (im2latex-100k), handwritten expressions (MathWriting) and photographed handwriting (HME100K). A single 429-token vocabulary is shared by all stages, so each stage warm-starts from the previous one without resizing the output layer. Images are resized with their aspect ratio preserved and attention is masked so that padding is never attended to. On held-out subsets the model reaches a BLEU of 91.5 on printed formulas and 79.4 on handwritten expressions, with expression-level exact match (ExpRate) of 0.47 and 0.32 respectively. We compare against pix2tex, an open-source vision-transformer model, under an identical tokenizer and metric implementation; used off the shelf, it recognizes none of 500 handwritten test expressions exactly, showing the size of the printed-to-handwritten domain gap \tbd{im2latex/HME100K comparison}, and ablate a finer encoder grid, coverage attention and photo-style augmentation \tbd{one-sentence ablation finding}.
+We study image-to-\LaTeX{} recognition of mathematical expressions with a deliberately classic encoder--decoder: a ResNet-18 convolutional encoder, additive (Bahdanau) attention and an LSTM decoder with beam search. The model is trained in three stages that move progressively further from clean, printed input: printed formulas (im2latex-100k), handwritten expressions (MathWriting) and photographed handwriting (HME100K). A single 429-token vocabulary is shared by all stages, so each stage warm-starts from the previous one without resizing the output layer. Images are resized with their aspect ratio preserved and attention is masked so that padding is never attended to. On held-out subsets the model reaches a BLEU of 91.5 on printed formulas and 79.4 on handwritten expressions, with expression-level exact match (ExpRate) of 0.47 and 0.32 respectively. We compare against pix2tex, an open-source vision-transformer model, under an identical tokenizer and metric implementation; used off the shelf, it recognizes none of 500 handwritten test expressions exactly, showing the size of the printed-to-handwritten domain gap; on printed formulas it reaches BLEU 87.3 against our 91.5, and on photographed handwriting it scores BLEU 4.0, and ablate a finer encoder grid, coverage attention and photo-style augmentation \tbd{one-sentence ablation finding}.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -123,7 +123,7 @@ Table~\ref{tab:data} summarizes the data used at each stage.
 \toprule
 Stage & Dataset & Train & Val & Test \\
 \midrule
-1 & im2latex-100k & \tbd{n} & \tbd{n} & \tbd{n} \\
+1 & im2latex-100k & 55{,}033 & 6{,}072 & 6{,}810 \\
 2 & MathWriting (human) & 40{,}000 & 4{,}000 & \tbd{n} \\
 3 & HME100K (self-split) & $\approx$70k & $\approx$2k & $\approx$2k \\
 \bottomrule
@@ -169,7 +169,7 @@ Stage & Test set & BLEU & ExpRate & $\le$1 & $\le$2 \\
 \end{tabular}
 \end{table}
 
-Moving from printed to handwritten input lowers BLEU from 91.5 to 79.4 and ExpRate from 0.47 to 0.32, reflecting the added difficulty of handwriting. Fine-tuning on MathWriting raised validation token accuracy from 0.52 (the stage-1 model evaluated on MathWriting) to 0.82. Stage-3 validation token accuracy peaked at 0.836. The higher ExpRate on HME100K than on MathWriting should not be read as photographs being easier: the HME100K test slice comes from the same distribution as its training data, and the two test sets differ in expression length and symbol distribution. The 500 MathWriting test expressions average 18.1 tokens (median 17, range 1--72) \tbd{same statistics for the HME100K test slice}.
+Moving from printed to handwritten input lowers BLEU from 91.5 to 79.4 and ExpRate from 0.47 to 0.32, reflecting the added difficulty of handwriting. Fine-tuning on MathWriting raised validation token accuracy from 0.52 (the stage-1 model evaluated on MathWriting) to 0.82. Stage-3 validation token accuracy peaked at 0.836. The higher ExpRate on HME100K than on MathWriting should not be read as photographs being easier: the HME100K test slice comes from the same distribution as its training data, and the two test sets differ in expression length and symbol distribution. The 500 MathWriting test expressions average 18.1 tokens (median 17, range 1--72) The 2{,}000 HME100K test expressions average 17.1 tokens (median 14, range 1--90), so they are not longer than the MathWriting ones; the gap is better explained by the in-distribution test slice and by HME100K's narrower range of expression types..
 
 \textbf{More handwriting data.} Training on the full MathWriting human split for 20 epochs instead of the 40{,}000-image subset (same baseline architecture) raises BLEU on the same 500 test images from 79.4 to 86.7 and ExpRate from 0.316 to 0.478 (ExpRate $\le$1: 0.680, $\le$2: 0.794) \tbd{size of the full training split}.
 
@@ -179,7 +179,7 @@ Moving from printed to handwritten input lowers BLEU from 91.5 to 79.4 and ExpRa
 Table~\ref{tab:pix2tex} compares the two models on identical test images, scored with the same tokenizer and metric code. pix2tex is used off the shelf, without fine-tuning; images on which it raises an error are counted as wrong (empty prediction).
 
 \begin{table}[t]
-\caption{Classic model vs.\ pix2tex on identical test images.}
+\caption{Classic model vs.\ pix2tex on identical test images. $^\dagger$See text: the pix2tex HME100K row uses a re-built 2{,}000-image slice that may differ from the slice behind our HME100K row.}
 \label{tab:pix2tex}
 \centering
 \setlength{\tabcolsep}{4pt}
@@ -188,19 +188,21 @@ Table~\ref{tab:pix2tex} compares the two models on identical test images, scored
 Model & Test set & BLEU & ExpRate & $\le$1 & $\le$2 \\
 \midrule
 Ours & im2latex & 91.5 & 0.470 & 0.550 & 0.700 \\
-pix2tex & im2latex & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
+pix2tex & im2latex & 87.3 & 0.352 & 0.422 & 0.524 \\
 \midrule
 Ours & MathWriting & 79.4 & 0.320 & 0.510 & 0.650 \\
 Ours, full MW & MathWriting & 86.7 & 0.478 & 0.680 & 0.794 \\
 pix2tex & MathWriting & 0.7 & 0.000 & 0.000 & 0.000 \\
 \midrule
 Ours & HME100K & 88.3 & 0.524 & 0.724 & 0.832 \\
-pix2tex & HME100K & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
+pix2tex & HME100K$^\dagger$ & 4.0 & 0.000 & 0.0005 & 0.003 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-On the 500 MathWriting test images, off-the-shelf pix2tex recognizes none of the expressions exactly (BLEU 0.7), against ExpRate 0.316 for our 40k-image model and 0.478 for our full-data model. Its outputs are typically long, unrelated \LaTeX{} (e.g.\ nested \texttt{array} environments) rather than near misses, so ExpRate $\le$2 is also zero. To rule out a broken installation, we rendered two of the same reference expressions as printed formulas: pix2tex transcribed $\frac{q}{A}=h_{o}(T_{o}-T_{s})$ correctly and failed only on the expression with a cube root. The comparison therefore shows the domain gap of a printed-formula model on handwriting, not the ceiling of transformer architectures: pix2tex was trained mainly on rendered formulas and was not fine-tuned here. \tbd{discussion of the im2latex and HME100K rows once measured}
+On the 500 MathWriting test images, off-the-shelf pix2tex recognizes none of the expressions exactly (BLEU 0.7), against ExpRate 0.316 for our 40k-image model and 0.478 for our full-data model. Its outputs are typically long, unrelated \LaTeX{} (e.g.\ nested \texttt{array} environments) rather than near misses, so ExpRate $\le$2 is also zero. To rule out a broken installation, we rendered two of the same reference expressions as printed formulas: pix2tex transcribed $\frac{q}{A}=h_{o}(T_{o}-T_{s})$ correctly and failed only on the expression with a cube root. The comparison therefore shows the domain gap of a printed-formula model on handwriting, not the ceiling of transformer architectures: pix2tex was trained mainly on rendered formulas and was not fine-tuned here. On printed formulas (the first 500 im2latex-100k test images) pix2tex is close to our model in BLEU (87.3 vs.\ 91.5) but lower in exact match (ExpRate 0.352 vs.\ 0.470). Since pix2tex was trained on rendered formulas, possibly overlapping with im2latex-100k, this row is the most favourable setting for it. On photographed handwriting (HME100K) it fails almost completely: BLEU 4.0, no exact matches, and only 6 of 2{,}000 expressions within two edits.
+
+The HME100K test slice used for pix2tex was re-built from the public label file (99{,}109 labelled images) with the same seed-0 shuffle as our stage-3 split, but the original stage-3 split was carved from roughly 74k images, so the two 2{,}000-image slices are not guaranteed to coincide. The pix2tex number is unaffected (pix2tex never saw HME100K), but our 88.3 BLEU and the pix2tex row are not on provably identical images. Re-evaluating our stage-3 model on the re-built slice gives BLEU 92.0 and ExpRate 0.618 ($\le$1: 0.829, $\le$2: 0.915), clearly above the 88.3 / 0.524 measured on the original slice. We attribute the gap to probable overlap between the re-built slice and our stage-3 training data, and therefore report the original 88.3 / 0.524 in Tables~\ref{tab:stages} and~\ref{tab:pix2tex}; the re-built-slice number should be read as an upper bound.
 
 \subsection{RQ3: Ablation}
 \begin{table}[t]
