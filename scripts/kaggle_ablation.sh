@@ -7,7 +7,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 EPOCHS=${EPOCHS:-10}
 OUT=/kaggle/working/ablation_results.txt
-pip install -q datasets nltk gdown
+pip install -q datasets nltk
 python scripts/kaggle_fetch_checkpoints.py
 [ -s data/mathwriting/test.jsonl ] || python scripts/download_mathwriting.py --train-cap 40000 --val-cap 4000
 { echo "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader | tr '\n' ' ')"; echo "EPOCHS=$EPOCHS";

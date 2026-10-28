@@ -1,19 +1,23 @@
-"""Pull release checkpoints from the shared Drive folder into checkpoints/ (flat), skip
-files already there, drop the hf_cache that rides along in the folder."""
-import glob
+"""Download the release checkpoints into checkpoints/ (skips files already there).
+GitHub release, not the Drive folder: Drive rate-limits repeated gdown pulls."""
 import os
-import shutil
-import subprocess
+import urllib.request
 
-DRIVE = "https://drive.google.com/drive/folders/1nSJGLWYajiinlNDYWbBibtLpdbL4tyr0"
+from tqdm import tqdm
 
-if not os.path.exists("checkpoints/pretrain_best.pth"):
-    subprocess.run(["gdown", "--folder", DRIVE, "-O", "checkpoints"], check=True)
-for f in glob.glob("checkpoints/**/*", recursive=True):
-    dst = os.path.join("checkpoints", os.path.basename(f))
-    if f.endswith((".pth", "vocab.json")) and os.path.dirname(f) != "checkpoints" \
-            and not os.path.exists(dst):
-        shutil.move(f, dst)
-for junk in ("checkpoints/ckpts", "checkpoints/hf_cache"):
-    shutil.rmtree(junk, ignore_errors=True)
+RELEASE = "https://github.com/unstablerandomwalk/scribe2tex/releases/download/v0.1.0/"
+FILES = ["pretrain_best.pth", "finetune_best.pth", "hme100k_best.pth"]
+
+os.makedirs("checkpoints", exist_ok=True)
+for name in FILES:
+    dst = os.path.join("checkpoints", name)
+    if os.path.exists(dst):
+        continue
+    with urllib.request.urlopen(RELEASE + name) as r, open(dst + ".part", "wb") as f, \
+            tqdm(total=int(r.headers.get("Content-Length", 0)), unit="B", unit_scale=True,
+                 desc=name) as bar:
+        while chunk := r.read(1 << 20):
+            f.write(chunk)
+            bar.update(len(chunk))
+    os.replace(dst + ".part", dst)  # no half-written .pth if the download dies
 print(sorted(os.listdir("checkpoints")))

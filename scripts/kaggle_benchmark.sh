@@ -8,7 +8,7 @@ OUT=/kaggle/working/benchmark_results.txt
 : > "$OUT"
 log() { echo "$@" | tee -a "$OUT"; }
 
-pip install -q datasets nltk gdown virtualenv
+pip install -q datasets nltk virtualenv
 # Kaggle's python has no ensurepip, so `python -m venv` fails; virtualenv doesn't need it
 # (a half-made venv from a failed `python -m venv` has python but no pip: rebuild it)
 [ -x /kaggle/working/p2t/bin/pip ] || { rm -rf /kaggle/working/p2t; python -m virtualenv -q /kaggle/working/p2t; }
