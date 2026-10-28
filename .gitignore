@@ -6,5 +6,6 @@ checkpoints/*.pth
 *.ipynb_checkpoints
 .DS_Store
 .venv/
+.venv-pix2tex/
 venv/
 *.db

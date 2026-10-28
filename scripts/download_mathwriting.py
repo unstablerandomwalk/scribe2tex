@@ -19,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from datasets import load_dataset                       # noqa: E402
+from tqdm import tqdm                                   # noqa: E402
 
 from model.config import DATA_DIR, VOCAB_PATH           # noqa: E402
 from model.tokenizer import Vocab, tokenize_latex       # noqa: E402
@@ -30,12 +31,14 @@ def dump_split(name: str, cap: int) -> Path:
     """Stream `name` split, save up to `cap` grayscale PNGs + a JSONL manifest."""
     ds = load_dataset("deepcopy/MathWriting-human", split=name, streaming=True)
     rows = islice(ds, cap) if cap else ds
+    splits = ds.info.splits or {}                         # streaming may not know sizes
+    total = cap or (splits[name].num_examples if name in splits else None)
     img_dir = OUT / name
     img_dir.mkdir(parents=True, exist_ok=True)
     manifest = OUT / f"{name}.jsonl"
     n = 0
     with manifest.open("w") as f:
-        for i, row in enumerate(rows):
+        for i, row in enumerate(tqdm(rows, total=total, desc=name, unit="img")):
             path = img_dir / f"{i:07d}.png"
             row["image"].convert("L").save(path)
             f.write(json.dumps({"image": str(path.resolve()), "latex": row["latex"]}) + "\n")
