@@ -22,6 +22,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from tqdm import tqdm                                   # noqa: E402
+
 from model.config import VOCAB_PATH                    # noqa: E402
 from model.tokenizer import Vocab, tokenize_latex      # noqa: E402
 
@@ -43,7 +45,8 @@ def build(images_dir: str, label_file: str, out: str, cap: int) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     written = missing = 0
     with out.open("w") as f:
-        for line in Path(label_file).read_text().splitlines():
+        lines = Path(label_file).read_text().splitlines()
+        for line in tqdm(lines, desc="checking images", unit="img"):
             if not line.strip():
                 continue
             name, latex = parse_label_line(line)
