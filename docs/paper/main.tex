@@ -131,7 +131,7 @@ Stage & Dataset & Train & Val & Test \\
 \end{table}
 
 \subsection{Training}
-Stage 1 trains from ImageNet-initialized ResNet-18 weights with Adam (learning rate $10^{-3}$, weight decay $10^{-5}$), batch size 32 and gradient-norm clipping at 5.0. The learning rate is reduced on a validation-loss plateau (patience 2). Stages 2 and 3 warm-start from the previous stage's best checkpoint with learning rate $10^{-4}$. The best checkpoint at each stage is selected by validation cross-entropy. The best checkpoint was reached at epoch 32 in stage 1, epoch 25 in stage 2 and epoch 14 in stage 3 \tbd{total epochs run per stage}. All training was run on Kaggle (\tbd{GPU model}); wall-clock time per stage was \tbd{hours}.
+Stage 1 trains from ImageNet-initialized ResNet-18 weights with Adam (learning rate $10^{-3}$, weight decay $10^{-5}$), batch size 32 and gradient-norm clipping at 5.0. The learning rate is reduced on a validation-loss plateau (patience 2). Stages 2 and 3 warm-start from the previous stage's best checkpoint with learning rate $10^{-4}$. The best checkpoint at each stage is selected by validation cross-entropy. The best checkpoint was reached at epoch 32 in stage 1, epoch 25 in stage 2 and epoch 14 in stage 3, out of 32, 30 and 15 epochs run respectively. All training was run on Kaggle (single NVIDIA Tesla T4, 16\,GB); wall-clock time was approximately 3.5, 2.5 and 2 hours for the three stages.
 
 Training-time augmentation (applied on the fly):
 random affine transform (rotation and shear up to $5^\circ$, translation up to 2\%), Gaussian blur and brightness/contrast jitter. The \emph{photo-style} augmentation used in the ablation adds random perspective distortion, a linear shadow gradient, stronger blur and jitter, and JPEG re-encoding at quality 20--60.
@@ -171,7 +171,7 @@ Stage & Test set & BLEU & ExpRate & $\le$1 & $\le$2 \\
 
 Moving from printed to handwritten input lowers BLEU from 91.5 to 79.4 and ExpRate from 0.47 to 0.32, reflecting the added difficulty of handwriting. Fine-tuning on MathWriting raised validation token accuracy from 0.52 (the stage-1 model evaluated on MathWriting) to 0.82. Stage-3 validation token accuracy peaked at 0.836. The higher ExpRate on HME100K than on MathWriting should not be read as photographs being easier: the HME100K test slice comes from the same distribution as its training data, and the two test sets differ in expression length and symbol distribution. The 500 MathWriting test expressions average 18.1 tokens (median 17, range 1--72) The 2{,}000 HME100K test expressions average 17.1 tokens (median 14, range 1--90), so they are not longer than the MathWriting ones; the gap is better explained by the in-distribution test slice and by HME100K's narrower range of expression types..
 
-\textbf{More handwriting data.} Training on the full MathWriting human split for 20 epochs instead of the 40{,}000-image subset (same baseline architecture) raises BLEU on the same 500 test images from 79.4 to 86.7 and ExpRate from 0.316 to 0.478 (ExpRate $\le$1: 0.680, $\le$2: 0.794) \tbd{size of the full training split}.
+\textbf{More handwriting data.} Training on the full MathWriting human split for 20 epochs instead of the 40{,}000-image subset (same baseline architecture) raises BLEU on the same 500 test images from 79.4 to 86.7 and ExpRate from 0.316 to 0.478 (ExpRate $\le$1: 0.680, $\le$2: 0.794); the full human training split contains 229{,}864 expressions.
 
 \textbf{Catastrophic forgetting.} Fine-tuning on photographs degrades handwriting accuracy. On a 200-image slice of the MathWriting test set, the stage-3 (HME100K) checkpoint reaches an ExpRate of only 0.065, whereas a model trained for 20 epochs on the full MathWriting human split reaches 0.445 on the same slice.
 
@@ -294,7 +294,7 @@ MathWriting full & 0.478 & 0.568 & 0.680 & 0.785 & 0.870 \\
 A classic ResNet-18 + attention + LSTM model, trained in stages from printed to handwritten to photographed input with a single shared vocabulary, reaches BLEU 79.4 and ExpRate 0.32 on held-out handwritten expressions. Training on the full MathWriting human split raises this to BLEU 86.7 and ExpRate 0.478, while off-the-shelf pix2tex, a printed-formula transformer, recognizes none of the same handwritten expressions exactly. In a short ablation, a finer encoder grid, coverage attention and photo-style augmentation each changed results by less than the sampling error of a 500-image test subset. Future work includes evaluation on full and official test splits including CROHME, joint (rather than sequential) multi-domain training to avoid forgetting, and a preprocessing front end (cropping and binarization) for raw phone photographs.
 
 \section*{Acknowledgment}
-\tbd{acknowledgment, e.g.\ lab, supervisor, compute (Kaggle)}
+The authors thank the Manipal Institute of Technology for its support of this work, and Kaggle for the GPU compute used for training and evaluation.
 
 %=====================================================================
 \begin{thebibliography}{99}
