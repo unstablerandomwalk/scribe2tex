@@ -9,3 +9,8 @@ checkpoints/*.pth
 .venv-pix2tex/
 venv/
 *.db
+
+# local agent tooling state
+.claude/
+.claude-flow/
+agentdb.rvf*

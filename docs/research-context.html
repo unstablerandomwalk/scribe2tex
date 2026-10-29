@@ -1,0 +1,237 @@
+<title>scribe2tex Research Context</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single reading column on graph-paper ground; tables break out to a wider measure. */
+:root{
+  --paper:#f6f8fb; --sheet:#ffffff; --ink:#18202e; --muted:#5a6578; --rule:#dbe2ec;
+  --pen:#2550c8; --pen-soft:#e6ecfb; --good:#1f7a4d; --warn:#9a6200; --warn-soft:#fbf1dd;
+  --grid:rgba(37,80,200,.06);
+  --f-display:"STIX Two Text","Times New Roman",serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#11151d; --sheet:#171c26; --ink:#e7ebf2; --muted:#9aa5b8; --rule:#2a3242;
+  --pen:#86a6ff; --pen-soft:#1e2a47; --good:#5fcf98; --warn:#e8b45a; --warn-soft:#2e2615;
+  --grid:rgba(134,166,255,.05); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#11151d; --sheet:#171c26; --ink:#e7ebf2; --muted:#9aa5b8; --rule:#2a3242;
+  --pen:#86a6ff; --pen-soft:#1e2a47; --good:#5fcf98; --warn:#e8b45a; --warn-soft:#2e2615;
+  --grid:rgba(134,166,255,.05); color-scheme:dark}
+body{background:var(--paper);color:var(--ink);font:16px/1.6 var(--f-body);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px}
+.wrap{max-width:860px;margin:0 auto;padding-inline:20px;padding-block:48px 80px}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;text-wrap:balance;line-height:1.2;margin:0}
+h1{font-size:2.6rem}
+h2{font-size:1.7rem;margin-top:56px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
+h3{font-size:1.15rem}
+p{margin:0;max-width:68ch}
+.stack{display:flex;flex-direction:column;gap:14px}
+.eyebrow{font:500 .75rem/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--pen)}
+.lede{font-size:1.1rem;color:var(--muted)}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+a{color:var(--pen);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--pen);outline-offset:2px;border-radius:2px}
+.arch{font-family:var(--f-mono);font-size:.85rem;background:var(--sheet);border:1px solid var(--rule);
+  border-radius:6px;padding:14px 16px;overflow-x:auto;white-space:pre;color:var(--ink)}
+
+/* timeline */
+.timeline{list-style:none;margin:0;padding:0;display:grid;gap:0;border-left:2px solid var(--rule);margin-left:6px}
+.timeline li{position:relative;padding:0 0 18px 22px}
+.timeline li::before{content:"";position:absolute;left:-7px;top:7px;width:12px;height:12px;border-radius:50%;
+  background:var(--sheet);border:2px solid var(--pen)}
+.timeline li.you::before{background:var(--pen)}
+.timeline .yr{font:500 .8rem var(--f-mono);color:var(--muted)}
+
+/* paper list */
+.papers{display:grid;gap:12px;counter-reset:ref}
+.paper{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:16px 18px;display:grid;gap:6px;min-width:0}
+.paper .cite{font-family:var(--f-display);font-size:1.08rem;line-height:1.35}
+.paper .cite::before{counter-increment:ref;content:"[" counter(ref) "] ";color:var(--pen);font-family:var(--f-mono);font-size:.85rem}
+.paper .venue{font:400 .8rem var(--f-mono);color:var(--muted)}
+.paper .rel{font-size:.93rem}
+.paper .rel b{font-weight:600}
+.tag{display:inline-block;font:500 .7rem/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;
+  padding:4px 7px;border-radius:3px;background:var(--pen-soft);color:var(--pen);margin-right:6px;vertical-align:2px}
+
+/* tables */
+.tbl{overflow-x:auto;background:var(--sheet);border:1px solid var(--rule);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:.92rem;font-variant-numeric:tabular-nums}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{font:500 .74rem var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.n{text-align:right;font-family:var(--f-mono)}
+tr.you td{background:var(--pen-soft);font-weight:600}
+tr:last-child td{border-bottom:0}
+.note{font-size:.88rem;color:var(--muted)}
+.flag{background:var(--warn-soft);border-left:3px solid var(--warn);padding:12px 14px;border-radius:0 6px 6px 0;font-size:.93rem}
+.flag b{color:var(--warn)}
+
+/* contributions */
+.contrib{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:12px}
+.col{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:16px 18px;min-width:0}
+.col ul{margin:10px 0 0;padding-left:18px;display:grid;gap:8px;font-size:.94rem}
+.col.mine{border-color:var(--pen)}
+.say{display:grid;gap:10px;padding:0;margin:0;list-style:none}
+.say li{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:12px 16px;font-size:.95rem}
+.say li.no{border-style:dashed}
+.say .lbl{font:500 .72rem var(--f-mono);letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:4px}
+.say .ok{color:var(--good)} .say .bad{color:var(--warn)}
+ol.next{margin:0;padding-left:22px;display:grid;gap:8px;max-width:68ch}
+@media (prefers-reduced-motion:no-preference){a{transition:color .15s}}
+</style>
+
+<div class="wrap stack" style="gap:18px">
+  <span class="eyebrow">Project presentation · literature &amp; contributions</span>
+  <h1>scribe2tex in the research landscape</h1>
+  <p class="lede">The model is a ResNet-18 encoder with Bahdanau attention and an LSTM decoder that turns an image of a math expression into LaTeX. It belongs to a well-studied line of image-to-markup papers. This page lists the papers to cite, compares the numbers honestly, and separates what was borrowed from what this project adds.</p>
+  <div class="arch">image ─► ResNet-18 (ImageNet) ─► 256-d feature grid ─► pad-masked Bahdanau attention ─► LSTM ─► beam search ─► LaTeX + confidence
+training: im2latex-100k (printed) ─► MathWriting 40k (handwritten) ─► HME100K (phone photos), one 429-token vocab throughout</div>
+
+  <h2>Where it sits</h2>
+  <ol class="timeline">
+    <li><span class="yr">2015</span><br><b>Attention arrives.</b> Bahdanau attention for translation [1]; Show, Attend and Tell applies it to images [2]. scribe2tex's decoder is this design.</li>
+    <li><span class="yr">2017</span><br><b>Image-to-LaTeX becomes a task.</b> Deng et al. release im2latex-100k [4]; WAP adapts the same idea to handwriting on CROHME [5].</li>
+    <li><span class="yr">2021–22</span><br><b>Transformers and structure.</b> BTTR [6] and CoMER [7] swap the RNN for a transformer decoder. SAN [8] adds grammar and releases HME100K.</li>
+    <li><span class="yr">2024</span><br><b>Scale.</b> Google's MathWriting [9] gives 230k human-written samples plus 400k synthetic ones, and benchmarks large vision-language models.</li>
+    <li class="you"><span class="yr">2026</span><br><b>scribe2tex.</b> Rebuilds the classic 2015–17 architecture with modern transfer learning, trains it across three domains, and ships it as a working app. pix2tex [10] stands in as the modern transformer baseline.</li>
+  </ol>
+
+  <h2>Papers to show</h2>
+  <div class="papers">
+    <div class="paper">
+      <div class="cite">Bahdanau, Cho &amp; Bengio. Neural Machine Translation by Jointly Learning to Align and Translate.</div>
+      <div class="venue">ICLR 2015 · <a href="https://arxiv.org/abs/1409.0473">arXiv:1409.0473</a></div>
+      <div class="rel"><span class="tag">Used</span>The additive attention score <code>vᵀ tanh(W<sub>e</sub>e + W<sub>d</sub>h)</code> in <code>model/model.py</code> comes straight from this paper.</div>
+    </div>
+    <div class="paper">
+      <div class="cite">Xu et al. Show, Attend and Tell: Neural Image Caption Generation with Visual Attention.</div>
+      <div class="venue">ICML 2015 · <a href="https://arxiv.org/abs/1502.03044">arXiv:1502.03044</a></div>
+      <div class="rel"><span class="tag">Used</span>Source of the CNN → attention → LSTM layout, the hidden state initialised from mean features, and the doubly stochastic attention penalty in <code>train.py</code>.</div>
+    </div>
+    <div class="paper">
+      <div class="cite">He, Zhang, Ren &amp; Sun. Deep Residual Learning for Image Recognition.</div>
+      <div class="venue">CVPR 2016 · <a href="https://arxiv.org/abs/1512.03385">arXiv:1512.03385</a></div>
+      <div class="rel"><span class="tag">Used</span>The encoder backbone. The image-to-LaTeX papers below trained small CNNs from scratch; this project starts from ImageNet weights instead.</div>
+    </div>
+    <div class="paper">
+      <div class="cite">Deng, Kanervisto, Ling &amp; Rush. Image-to-Markup Generation with Coarse-to-Fine Attention.</div>
+      <div class="venue">ICML 2017 · <a href="https://arxiv.org/abs/1609.04938">arXiv:1609.04938</a></div>
+      <div class="rel"><span class="tag">Main baseline</span>Introduced im2latex-100k, the stage-1 dataset. Also pretrained on synthetic data before fine-tuning on handwriting, the same transfer idea scribe2tex extends to three stages.</div>
+    </div>
+    <div class="paper">
+      <div class="cite">Zhang et al. Watch, Attend and Parse: An End-to-End Neural Network Based Approach to Handwritten Mathematical Expression Recognition.</div>
+      <div class="venue">Pattern Recognition 71, 2017 · <a href="https://doi.org/10.1016/j.patcog.2017.06.017">doi</a></div>
+      <div class="rel"><span class="tag">Closest relative</span>Same family: CNN encoder plus RNN decoder with attention, applied to handwriting. Adds coverage attention, which scribe2tex does not have yet (see next steps).</div>
+    </div>
+    <div class="paper">
+      <div class="cite">Zhao, Gao, Yan &amp; Wang. Handwritten Mathematical Expression Recognition with Bidirectionally Trained Transformer (BTTR).</div>
+      <div class="venue">ICDAR 2021 · <a href="https://arxiv.org/abs/2105.02412">arXiv:2105.02412</a></div>
+      <div class="rel"><span class="tag">Modern contrast</span>The move from RNN to transformer decoder. Useful when explaining what the classic-versus-modern comparison is about.</div>
+    </div>
+    <div class="paper">
+      <div class="cite">Li et al. CoMER: Modeling Coverage for Transformer-Based Handwritten Mathematical Expression Recognition.</div>
+      <div class="venue">ECCV 2022 · <a href="https://arxiv.org/abs/2207.04410">arXiv:2207.04410</a></div>
+      <div class="rel"><span class="tag">Modern contrast</span>Brings WAP's coverage idea into transformers. Shows that ideas from the RNN era still carry forward.</div>
+    </div>
+    <div class="paper">
+      <div class="cite">Yuan et al. Syntax-Aware Network for Handwritten Mathematical Expression Recognition (SAN).</div>
+      <div class="venue">CVPR 2022 · <a href="https://arxiv.org/abs/2203.01601">arXiv:2203.01601</a></div>
+      <div class="rel"><span class="tag">Dataset</span>Introduced HME100K: 74,502 train and 24,607 test photos from about 10k writers. That is the stage-3 data. Its results table gives the HME100K reference numbers below.</div>
+    </div>
+    <div class="paper">
+      <div class="cite">Gervais, Fadeeva &amp; Maksai. MathWriting: A Dataset for Handwritten Mathematical Expression Recognition.</div>
+      <div class="venue">KDD 2025 · <a href="https://arxiv.org/abs/2404.10690">arXiv:2404.10690</a></div>
+      <div class="rel"><span class="tag">Dataset</span>The stage-2 data. Reports baselines from a 35M-parameter CTC transformer up to 3B-parameter PaliGemma.</div>
+    </div>
+    <div class="paper">
+      <div class="cite">Blecher. pix2tex / LaTeX-OCR (ViT encoder + transformer decoder).</div>
+      <div class="venue">Open-source software · <a href="https://github.com/lukas-blecher/LaTeX-OCR">github.com/lukas-blecher/LaTeX-OCR</a></div>
+      <div class="rel"><span class="tag">Benchmark target</span>This is software, not a paper. It is the modern baseline in the README; its comparison row is still empty.</div>
+    </div>
+  </div>
+
+  <h2>Results next to the papers</h2>
+  <div class="flag"><b>Read before presenting.</b> None of these rows are strictly like-for-like. scribe2tex numbers come from 500-sample test subsets (2k for HME100K) and use exact token match, while the papers use full test sets and their own normalisation. Present them as context, not as a leaderboard.</div>
+
+  <h3>Printed: im2latex-100k</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Model</th><th>Type</th><th class="n">BLEU</th><th class="n">Exact match</th></tr></thead>
+    <tbody>
+      <tr><td>CAPTION baseline (Show-Attend-Tell style) [4]</td><td>CNN + attn + LSTM</td><td class="n">75.0</td><td class="n">53.5*</td></tr>
+      <tr><td>IM2TEX, Deng et al. [4]</td><td>CNN + row-RNN + attn + LSTM</td><td class="n">87.7</td><td class="n">77.5*</td></tr>
+      <tr class="you"><td>scribe2tex, stage 1</td><td>ResNet-18 + attn + LSTM</td><td class="n">91.5</td><td class="n">47.0</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">* Deng's "exact match" compares rendered images, so different LaTeX that draws the same picture counts as correct. scribe2tex requires identical tokens, which is much stricter. The BLEU gain over the Show-Attend-Tell baseline is the strongest like-for-like signal, but BLEU scripts differ (nltk with smoothing here, normalised-formula BLEU there).</p>
+
+  <h3>Handwritten: MathWriting test split</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Model</th><th class="n">Params</th><th>Train data</th><th class="n">Exact match</th><th class="n">≤1 error</th></tr></thead>
+    <tbody>
+      <tr><td>Google Cloud OCR [9]</td><td class="n">n/a</td><td>proprietary</td><td class="n">53%</td><td class="n">68%</td></tr>
+      <tr><td>CTC Transformer [9]</td><td class="n">35M</td><td>full human + 400k synthetic</td><td class="n">60%</td><td class="n">72%</td></tr>
+      <tr><td>PaLI [9]</td><td class="n">700M</td><td>full human + 400k synthetic</td><td class="n">64%</td><td class="n">73%</td></tr>
+      <tr><td>PaliGemma [9]</td><td class="n">3B</td><td>full human + 400k synthetic</td><td class="n">69%</td><td class="n">77%</td></tr>
+      <tr class="you"><td>scribe2tex, stage 2</td><td class="n">12.4M</td><td>40k human (~17%), no synthetic</td><td class="n">32%</td><td class="n">51%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">This is a real gap, and the main reason is data: scribe2tex saw about a tenth of the samples the baselines did. The MathWriting paper's own ablation found that synthetic data alone cut error rate by about 10%. Its labels are also normalised before scoring, and scribe2tex's are not, which counts formatting differences as errors.</p>
+
+  <h3>Phone photos: HME100K</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Model</th><th>Test set</th><th class="n">ExpRate</th></tr></thead>
+    <tbody>
+      <tr><td>DWAP [8]</td><td>official, 24,607</td><td class="n">61.9%</td></tr>
+      <tr><td>DWAP-TD [8]</td><td>official, 24,607</td><td class="n">62.6%</td></tr>
+      <tr><td>BTTR [8]</td><td>official, 24,607</td><td class="n">64.1%</td></tr>
+      <tr><td>SAN [8]</td><td>official, 24,607</td><td class="n">67.1%</td></tr>
+      <tr class="you"><td>scribe2tex, stage 3</td><td>self-carved, 2,000</td><td class="n">52.4%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">The Kaggle mirror only had training labels, so the 2k test slice was carved out of the training file. Say this out loud. scribe2tex also reaches 72.4% within one token and 83.2% within two, so most misses are near misses.</p>
+
+  <h2>What was borrowed and what this project adds</h2>
+  <div class="contrib">
+    <div class="col">
+      <h3>Borrowed from the literature</h3>
+      <ul>
+        <li>Additive attention [1]</li>
+        <li>CNN → attention → LSTM layout, mean-feature hidden state initialisation, doubly stochastic attention loss [2]</li>
+        <li>Image-to-LaTeX framing, beam search, BLEU and ExpRate metrics [4, 5]</li>
+        <li>Pretraining on easier data, then fine-tuning on handwriting [4]</li>
+        <li>Padding masks for batched images [5]</li>
+      </ul>
+    </div>
+    <div class="col mine">
+      <h3>Added in scribe2tex</h3>
+      <ul>
+        <li><b>ImageNet-pretrained ResNet-18 encoder.</b> The 2017 baselines trained small CNNs from scratch; this gives a strong visual prior with limited handwriting data.</li>
+        <li><b>A three-domain transfer chain.</b> Printed → handwritten → real phone photos, where Deng et al. used two stages. One shared 429-token vocabulary means each warm start keeps its output layer; it covered 99.9% of MathWriting tokens.</li>
+        <li><b>Measured gains from each stage.</b> Handwriting token accuracy went from 0.52 to 0.82 after fine-tuning. HME100K reached 0.836.</li>
+        <li><b>Aspect ratio kept intact</b> (height 128, padded, never squashed). Masking covers both attention and the decoder's initial state, so padding never leaks in.</li>
+        <li><b>A confidence score from beam search</b> that falls to about 0.4–0.5 on out-of-distribution photos and sits around 0.94 on clean input. The papers report accuracy only.</li>
+        <li><b>A working product:</b> FastAPI and Gradio over one <code>predict()</code> core, a Dockerfile, and iPhone HEIC support. None of the papers ship this.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>How to frame it</h2>
+  <ul class="say">
+    <li><span class="lbl ok">Say</span>"I rebuilt the classic attention architecture from the 2015–17 papers and modernised it with transfer learning. On printed formulas it beats the Show-Attend-Tell-style baseline from Deng et al. by about 16 BLEU points."</li>
+    <li><span class="lbl ok">Say</span>"I extended their two-stage pretrain-then-fine-tune idea to three domains, printed to handwritten to phone photos, and each stage gave a measurable gain."</li>
+    <li><span class="lbl ok">Say</span>"On handwriting I'm about 28 points behind models trained on ten times more data. Here is what I would change to close that gap."</li>
+    <li class="no"><span class="lbl bad">Don't say</span>"Beats state of the art on im2latex." The BLEU scripts and test subsets differ, and the exact-match numbers point the other way.</li>
+    <li class="no"><span class="lbl bad">Don't say</span>"52% on HME100K" without adding that it was measured on a self-carved split, not the official test set.</li>
+  </ul>
+
+  <h2>Next steps that would strengthen the story</h2>
+  <ol class="next">
+    <li><b>Fill the pix2tex row</b> on the same 500 test images. This is the comparison the project is built around.</li>
+    <li><b>Run full test sets</b> and score MathWriting with its own normalisation and token-level CER, so the numbers drop straight into the paper's table.</li>
+    <li><b>Add coverage attention</b> from WAP [5]. It is a small change to <code>BahdanauAttention</code>, and the WAP paper reports about 9 points of ExpRate gain from it on CROHME 2014.</li>
+    <li><b>Train on more MathWriting data,</b> the full ~230k human samples plus some synthetic, to test how much of the gap is data.</li>
+    <li><b>Evaluate on the official HME100K test set</b> (24,607 images) if a mirror with test labels can be found.</li>
+  </ol>
+</div>
