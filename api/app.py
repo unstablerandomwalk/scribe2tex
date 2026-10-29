@@ -44,10 +44,12 @@ EXAMPLES = [
     ["api/examples/integral.png"],
 ]
 
+# Report Tables II-III: 500-image test subsets, best-val checkpoints.
 BENCHMARKS = [
-    ("1  im2latex (printed)", "91.5", "0.47"),
-    ("2  MathWriting (hand)", "79.4", "0.32"),
-    ("3  HME100K (photos)*", "88.3", "0.52"),
+    ("im2latex (printed)", "91.5", "0.470"),
+    ("MathWriting 40k", "79.4", "0.320"),
+    ("MathWriting full &#9668;", "86.7", "0.478"),
+    ("HME100K (photos)*", "88.3", "0.524"),
 ]
 
 
@@ -100,10 +102,6 @@ MENUBAR = (
     '<div class="mac-menubar">'
     f'<span class="mac-menu-apple">{APPLE}</span>'
     '<span class="mac-menu-item mac-menu-app">scribe2tex</span>'
-    '<span class="mac-menu-item">File</span>'
-    '<span class="mac-menu-item">Edit</span>'
-    '<span class="mac-menu-item">View</span>'
-    '<span class="mac-menu-item">Special</span>'
     '<span class="mac-menu-clock">image &#8594; LaTeX</span>'
     "</div>"
 )
@@ -114,17 +112,16 @@ BENCH_ROWS = "".join(
 )
 READ_ME = (
     '<div class="mac-readme">'
-    "<p><b>scribe2tex</b> reads an image of a math expression and writes its LaTeX. "
-    "The engine is a <b>from-scratch classic vision&#8594;sequence model</b> &mdash; "
-    "a ResNet-18 encoder, Bahdanau attention, and an LSTM decoder with beam search &mdash; "
-    "built the old way on purpose, so it can be benchmarked against the modern transformer.</p>"
-    '<table class="mac-table"><thead><tr><th>Stage &amp; test set</th>'
+    "<p>Image of a math expression in, LaTeX out. A from-scratch "
+    "<b>ResNet-18 + attention + LSTM</b>, built the classic way on purpose.</p>"
+    '<table class="mac-table"><thead><tr><th>Test set</th>'
     '<th class="num">BLEU</th><th class="num">ExpRate</th></tr></thead>'
     f"<tbody>{BENCH_ROWS}</tbody></table>"
-    '<p class="mac-fine">* HME100K on a self-carved held-out slice. Best-val checkpoint.</p>'
-    "<p><b>It likes a tidy document.</b> Crop close to the expression, dark ink, shoot "
-    "straight on. The confidence reading is honest &mdash; it falls when the model is "
-    "guessing at a smudge and rises when it can actually see the strokes.</p>"
+    "<p>Off-the-shelf pix2tex (a printed-formula transformer) scores "
+    "<b>BLEU 87.3</b> on printed but <b>0 exact</b> on the same handwriting.</p>"
+    '<p class="mac-fine">&#9668; model running here &middot; '
+    "* self-split held-out slice, not the official test set</p>"
+    '<p class="mac-fine"><b>Tip:</b> crop close, dark ink, shoot straight on.</p>'
     "</div>"
 )
 
@@ -135,8 +132,8 @@ CSS = r"""
   --ink:#000; --paper:#fff;
   --pix:'Silkscreen', 'Chicago', system-ui, sans-serif;
   --mono:'Courier Prime', ui-monospace, Monaco, 'Menlo', monospace;
-  /* 50% checkerboard "desktop" dither */
-  --desk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='2' height='2' fill='%23000'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23000'/%3E%3C/svg%3E");
+  /* sparse 1-in-8 dot dither: reads as a calm light-grey desktop */
+  --desk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='%23000'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23000'/%3E%3C/svg%3E");
 }
 
 /* every underlying surface IS the desktop — no black can show through on scroll */
@@ -180,8 +177,8 @@ footer, .show-api, .built-with{ display:none !important; }
 .mac-menu-clock{ margin-left:auto; font-size:10px; letter-spacing:.5px; }
 
 /* ---- desktop workspace ---- */
-#desktop{ padding:26px 20px 60px !important; display:flex; justify-content:center; }
-#desk-cols{ width:100%; max-width:940px; gap:20px !important; }
+#desktop{ padding:40px 20px 60px !important; display:flex; justify-content:center; }
+#desk-cols{ width:100%; max-width:980px; gap:28px !important; align-items:flex-start; }
 
 /* ---- window chrome ---- */
 .mac-window{
@@ -201,7 +198,7 @@ footer, .show-api, .built-with{ display:none !important; }
   position:absolute; left:7px; top:5px; width:11px; height:11px;
   border:2px solid var(--ink); background:var(--paper);
 }
-.mac-body{ padding:16px !important; }
+.mac-body{ padding:22px !important; gap:14px !important; }
 
 /* section labels */
 .mac-label{
@@ -295,9 +292,6 @@ button.mac-btn, .mac-btn button{
   .mac-menu-clock{ display:none; }              /* free space in the narrow menu bar */
   .mac-menu-item{ padding:0 8px; }
 }
-@media (max-width:480px){
-  .mac-menubar :nth-child(n+5){ display:none; }  /* keep Apple · app · File · Edit */
-}
 """
 
 CONTRACT_COMMENT = (
@@ -324,7 +318,7 @@ with gr.Blocks(title="scribe2tex", analytics_enabled=False) as demo:
                                 show_label=False, height=210, elem_classes="mac-well",
                             )
                             convert = gr.Button(
-                                "Convert ⌘↵", elem_classes="mac-btn default",
+                                "Convert", elem_classes="mac-btn default",
                             )
                         with gr.Column(scale=1):
                             gr.HTML('<div class="mac-label">Predicted LaTeX</div>')
@@ -337,7 +331,7 @@ with gr.Blocks(title="scribe2tex", analytics_enabled=False) as demo:
                             gr.HTML('<div class="mac-label" style="margin-top:12px">Rendered</div>')
                             preview = gr.Image(
                                 show_label=False, height=120, elem_classes="mac-well",
-                                interactive=False,
+                                interactive=False, buttons=[],
                             )
                             gr.HTML('<div class="mac-label" style="margin-top:12px">Confidence</div>')
                             conf = gr.HTML(
