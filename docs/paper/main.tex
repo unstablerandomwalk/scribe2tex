@@ -34,7 +34,7 @@ Manipal, India}}
 \IEEEpubidadjcol
 
 \begin{abstract}
-We study image-to-\LaTeX{} recognition of mathematical expressions with a deliberately classic encoder--decoder: a ResNet-18 convolutional encoder, additive (Bahdanau) attention and an LSTM decoder with beam search. The model is trained in three stages that move progressively further from clean, printed input: printed formulas (im2latex-100k), handwritten expressions (MathWriting) and photographed handwriting (HME100K). A single 429-token vocabulary is shared by all stages, so each stage warm-starts from the previous one without resizing the output layer. Images are resized with their aspect ratio preserved and attention is masked so that padding is never attended to. On held-out subsets the model reaches a BLEU of 91.5 on printed formulas and 79.4 on handwritten expressions, with expression-level exact match (ExpRate) of 0.47 and 0.32 respectively. We compare against pix2tex, an open-source vision-transformer model, under an identical tokenizer and metric implementation; used off the shelf, it recognizes none of 500 handwritten test expressions exactly, showing the size of the printed-to-handwritten domain gap; on printed formulas it reaches BLEU 87.3 against our 91.5, and on photographed handwriting it scores BLEU 4.0, and ablate a finer encoder grid, coverage attention and photo-style augmentation \tbd{one-sentence ablation finding}.
+We study image-to-\LaTeX{} recognition of mathematical expressions with a deliberately classic encoder--decoder: a ResNet-18 convolutional encoder, additive (Bahdanau) attention and an LSTM decoder with beam search. The model is trained in three stages that move progressively further from clean, printed input: printed formulas (im2latex-100k), handwritten expressions (MathWriting) and photographed handwriting (HME100K). A single 429-token vocabulary is shared by all stages, so each stage warm-starts from the previous one without resizing the output layer. Images are resized with their aspect ratio preserved and attention is masked so that padding is never attended to. On held-out subsets the model reaches a BLEU of 91.5 on printed formulas and 79.4 on handwritten expressions, with expression-level exact match (ExpRate) of 0.47 and 0.32 respectively. We compare against pix2tex, an open-source vision-transformer model, under an identical tokenizer and metric implementation; used off the shelf, it recognizes none of 500 handwritten test expressions exactly, showing the size of the printed-to-handwritten domain gap; on printed formulas it reaches BLEU 87.3 against our 91.5, and on photographed handwriting it scores BLEU 4.0, and ablate a finer encoder grid, coverage attention and photo-style augmentation: in a 10-epoch, single-seed fine-tune, all four variants lie within 2 BLEU points and 2.4 ExpRate points of each other, inside the sampling error of a 500-image test subset.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -124,7 +124,7 @@ Table~\ref{tab:data} summarizes the data used at each stage.
 Stage & Dataset & Train & Val & Test \\
 \midrule
 1 & im2latex-100k & 55{,}033 & 6{,}072 & 6{,}810 \\
-2 & MathWriting (human) & 40{,}000 & 4{,}000 & \tbd{n} \\
+2 & MathWriting (human) & 40{,}000 & 4{,}000 & 7{,}644 \\
 3 & HME100K (self-split) & $\approx$70k & $\approx$2k & $\approx$2k \\
 \bottomrule
 \end{tabular}
@@ -206,7 +206,7 @@ The HME100K test slice used for pix2tex was re-built from the public label file 
 
 \subsection{RQ3: Ablation}
 \begin{table}[t]
-\caption{Ablation on MathWriting \tbd{and/or HME100K} test (same subset for every row).}
+\caption{Ablation on the first 500 MathWriting test images (same subset for every row). Each row is fine-tuned from the stage-1 checkpoint for 10 epochs on the 40{,}000-image subset; rows are cumulative.}
 \label{tab:ablation}
 \centering
 \setlength{\tabcolsep}{4pt}
@@ -214,15 +214,15 @@ The HME100K test slice used for pix2tex was re-built from the public label file 
 \toprule
 Variant & BLEU & ExpRate & $\le$1 & $\le$2 \\
 \midrule
-Baseline (stride 32, no coverage) & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
-+ fine grid (stride 16) & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
-+ coverage attention & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
-+ photo-style augmentation & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
+Baseline (stride 32, no coverage) & 77.0 & 0.256 & 0.472 & 0.616 \\
++ fine grid (stride 16) & 76.7 & \textbf{0.280} & 0.470 & 0.582 \\
++ coverage attention & 76.5 & 0.256 & 0.444 & 0.574 \\
++ photo-style augmentation & \textbf{78.5} & 0.270 & \textbf{0.486} & \textbf{0.628} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\tbd{Discussion of Table~\ref{tab:ablation}.}
+The ablation baseline (BLEU 77.0, ExpRate 0.256) is below the 79.4 / 0.316 of Table~\ref{tab:stages} because it is trained for 10 rather than up to 25 epochs. The finer grid gives the highest exact-match rate (0.280, $+$2.4 points), coverage attention gives no further gain at this budget, and photo-style augmentation gives the highest BLEU (78.5) and near-miss rates ($\le$1: 0.486, $\le$2: 0.628). None of these differences is conclusive: with $n=500$ the standard error of an ExpRate near 0.26 is about 0.02, so a 95\% interval spans roughly $\pm$4 points, wider than any gap in the table, and each row is a single seed. Confidence separation is similar in all four variants (mean confidence 0.94 on correct versus 0.85--0.86 on wrong outputs). We therefore read the ablation as showing that none of the three changes is harmful, not that any one of them is a clear improvement; longer training, several seeds and the full 7{,}644-image test split would be needed to separate them.
 
 \subsection{Error analysis}
 Table~\ref{tab:errors} breaks ExpRate down by reference length and by the structures an expression contains, using the per-sample predictions on the 500 MathWriting test images. For the 40k-image model, accuracy falls steadily with length, from 0.412 on expressions of at most 10 tokens to 0.128 on those longer than 30; this is the expected weakness of a recurrent decoder, where a single early mistake makes the whole expression wrong. With the full training split, every bucket improves, and the longest bucket rises to 0.487, although it contains only 39 expressions. Expressions with sub- or superscripts are the most common (372 of 500) and among the hardest for both models.
@@ -291,7 +291,7 @@ MathWriting full & 0.478 & 0.568 & 0.680 & 0.785 & 0.870 \\
 
 %=====================================================================
 \section{Conclusion}
-A classic ResNet-18 + attention + LSTM model, trained in stages from printed to handwritten to photographed input with a single shared vocabulary, reaches BLEU 79.4 and ExpRate 0.32 on held-out handwritten expressions. Training on the full MathWriting human split raises this to BLEU 86.7 and ExpRate 0.478, while off-the-shelf pix2tex, a printed-formula transformer, recognizes none of the same handwritten expressions exactly. \tbd{one sentence on the ablation} Future work includes evaluation on full and official test splits including CROHME, joint (rather than sequential) multi-domain training to avoid forgetting, and a preprocessing front end (cropping and binarization) for raw phone photographs.
+A classic ResNet-18 + attention + LSTM model, trained in stages from printed to handwritten to photographed input with a single shared vocabulary, reaches BLEU 79.4 and ExpRate 0.32 on held-out handwritten expressions. Training on the full MathWriting human split raises this to BLEU 86.7 and ExpRate 0.478, while off-the-shelf pix2tex, a printed-formula transformer, recognizes none of the same handwritten expressions exactly. In a short ablation, a finer encoder grid, coverage attention and photo-style augmentation each changed results by less than the sampling error of a 500-image test subset. Future work includes evaluation on full and official test splits including CROHME, joint (rather than sequential) multi-domain training to avoid forgetting, and a preprocessing front end (cropping and binarization) for raw phone photographs.
 
 \section*{Acknowledgment}
 \tbd{acknowledgment, e.g.\ lab, supervisor, compute (Kaggle)}
