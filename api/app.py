@@ -26,17 +26,12 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the
 ============================================================================
 """
 import io
-import os
 
-# Full-MathWriting checkpoint (20 epochs): ExpRate 0.445 vs 0.065 for hme100k_best on a
-# 200-image MathWriting test slice. Set MODEL_PATH=checkpoints/hme100k_best.pth for photos.
-os.environ.setdefault("MODEL_PATH", "checkpoints/mwfull20_best.pth")
+import gradio as gr
+from PIL import Image
 
-import gradio as gr  # noqa: E402
-from PIL import Image  # noqa: E402
-
-from api.predict import predict_latex  # noqa: E402
-from api.render import render_latex_png  # noqa: E402
+from api.predict import predict_latex
+from api.render import render_latex_png
 
 EXAMPLES = [
     ["api/examples/frac.png"],

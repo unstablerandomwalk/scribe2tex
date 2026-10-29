@@ -83,7 +83,7 @@ gh release download v0.1.0 -D checkpoints
 
 **Gradio demo** — upload an image → LaTeX + rendered preview + confidence:
 ```bash
-export MODEL_PATH=checkpoints/finetune_best.pth   # handwriting model (or pretrain_best.pth for printed)
+# optional: export MODEL_PATH=checkpoints/hme100k_best.pth  (default mwfull20_best.pth)
 python -m api.app        # local; set share=True in app.py for a temporary public link on Colab
 ```
 
@@ -101,7 +101,7 @@ docker run -p 8000:8000 -v $PWD/checkpoints:/app/checkpoints scribe2tex
 
 **Deploy to Hugging Face Spaces** (permanent public demo): create a Gradio Space, push this
 repo, add `app_file: api/app.py` to the Space README frontmatter, and place
-`finetune_best.pth` + `vocab.json` under `checkpoints/` (git-lfs).
+`mwfull20_best.pth` + `vocab.json` under `checkpoints/` (git-lfs).
 
 ## Known simplifications
 - Best checkpoint is picked on val cross-entropy (cheap); BLEU/ExpRate reported on the

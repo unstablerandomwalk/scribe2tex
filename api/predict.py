@@ -2,7 +2,7 @@
 
 Checkpoint/vocab paths are env-overridable so the same code runs locally, on Colab,
 and on Hugging Face Spaces:
-    MODEL_PATH   (default checkpoints/finetune_best.pth)
+    MODEL_PATH   (default checkpoints/mwfull20_best.pth; hme100k_best.pth for photos)
     VOCAB_FILE   (default checkpoints/vocab.json)
 """
 import os
@@ -16,7 +16,9 @@ from model.inference import beam_search
 from model.model import load_model
 from model.tokenizer import Vocab
 
-MODEL_PATH = os.environ.get("MODEL_PATH", str(CKPT_DIR / "finetune_best.pth"))
+# Full-MathWriting checkpoint (20 epochs): ExpRate 0.445 vs 0.065 for hme100k_best on a
+# 200-image MathWriting test slice, so it's the default for every frontend.
+MODEL_PATH = os.environ.get("MODEL_PATH", str(CKPT_DIR / "mwfull20_best.pth"))
 VOCAB_FILE = os.environ.get("VOCAB_FILE", str(VOCAB_PATH))
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 

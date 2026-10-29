@@ -59,7 +59,7 @@ held-out slice (in-distribution), NOT the official 24,607-image HME100K test set
 cd ~/scribe2tex && .venv/bin/python -m api.app        # http://127.0.0.1:7860
 ```
 `.venv` = Python 3.12 with torch 2.13, torchvision, gradio, matplotlib, pillow-heif.
-`MODEL_PATH` env picks the checkpoint (default `checkpoints/finetune_best.pth`).
+`MODEL_PATH` env picks the checkpoint (default `checkpoints/mwfull20_best.pth`).
 
 **Kaggle training/eval (canonical flow):**
 ```
