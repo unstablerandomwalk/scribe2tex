@@ -20,6 +20,18 @@ def tokenize_latex(latex_str: str) -> list[str]:
     return [t.strip() for t in tokens if t.strip()]
 
 
+def detokenize_latex(latex_str: str) -> str:
+    """Space-joined tokens -> compact LaTeX ('A ^ { 2 }' -> 'A^{2}'). Keeps a space only
+    after a command word followed by a letter (\\alpha x), where dropping it changes meaning."""
+    out, prev = "", ""
+    for tok in tokenize_latex(latex_str):
+        if re.fullmatch(r"\\[a-zA-Z]+", prev) and tok[0].isalpha():
+            out += " "
+        out += tok
+        prev = tok
+    return out
+
+
 class Vocab:
     """Maps LaTeX tokens <-> integer ids. Build once over ALL training corpora
     (im2latex + MathWriting) so the output layer never resizes between stages."""

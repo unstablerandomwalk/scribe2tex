@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from model.config import EOS_ID, PAD_ID, SOS_ID, UNK_ID  # noqa: E402
-from model.tokenizer import Vocab, tokenize_latex          # noqa: E402
+from model.tokenizer import Vocab, detokenize_latex, tokenize_latex  # noqa: E402
 
 
 def test_tokenize_splits_commands_and_chars():
@@ -46,6 +46,13 @@ def test_save_load_roundtrip():
     p = os.path.join(tempfile.mkdtemp(), "vocab.json")
     v.save(p)
     assert Vocab.load(p).stoi == v.stoi
+
+
+def test_detokenize_compacts_but_keeps_command_spaces():
+    assert detokenize_latex("A P ^ { 2 } + B P ^ { 2 }") == "AP^{2}+BP^{2}"
+    assert detokenize_latex("\\alpha x + \\frac { 1 } { 2 }") == "\\alpha x+\\frac{1}{2}"
+    toks = tokenize_latex("\\sum _ { i } \\alpha x _ { i }")
+    assert tokenize_latex(detokenize_latex(" ".join(toks))) == toks
 
 
 def _run():

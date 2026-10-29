@@ -14,7 +14,7 @@ from model.config import CKPT_DIR, CONFIG, VOCAB_PATH
 from model.dataset import transform_image
 from model.inference import beam_search
 from model.model import load_model
-from model.tokenizer import Vocab
+from model.tokenizer import Vocab, detokenize_latex
 
 # Full-MathWriting checkpoint (20 epochs): ExpRate 0.445 vs 0.065 for hme100k_best on a
 # 200-image MathWriting test slice, so it's the default for every frontend.
@@ -40,4 +40,4 @@ def predict_latex(image, beam_width=None) -> dict:
         model, tensor.unsqueeze(0).to(DEVICE), vocab, valid_hw.unsqueeze(0).to(DEVICE),
         beam_width or CONFIG["beam_width"], CONFIG["max_seq_length"], CONFIG["length_penalty"],
     )
-    return {"latex": latex, "confidence": round(float(conf), 4)}
+    return {"latex": detokenize_latex(latex), "confidence": round(float(conf), 4)}
